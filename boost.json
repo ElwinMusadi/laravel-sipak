@@ -1,4 +1,8 @@
 {
+    "agents": [
+        "antigravity",
+        "codex"
+    ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
@@ -11,6 +15,7 @@
         "testing-best-practices",
         "wayfinder-development",
         "inertia-react-development",
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "laravel-specialist"
     ]
 }
