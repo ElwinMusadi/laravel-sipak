@@ -19,7 +19,7 @@ export function Breadcrumbs({
         <>
             {breadcrumbs.length > 0 && (
                 <Breadcrumb>
-                    <BreadcrumbList>
+                    <BreadcrumbList className="min-w-0 flex-nowrap overflow-hidden">
                         {breadcrumbs.map((item, index) => {
                             const isLast = index === breadcrumbs.length - 1;
 
@@ -31,7 +31,10 @@ export function Breadcrumbs({
                                                 {item.title}
                                             </BreadcrumbPage>
                                         ) : (
-                                            <BreadcrumbLink asChild>
+                                            <BreadcrumbLink
+                                                asChild
+                                                className="truncate"
+                                            >
                                                 <Link href={item.href}>
                                                     {item.title}
                                                 </Link>

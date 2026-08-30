@@ -1,20 +1,28 @@
-import { usePage } from '@inertiajs/react';
+import { cn } from '@/lib/utils';
 
-import AppLogoIcon from '@/components/app-logo-icon';
+type Props = {
+    className?: string;
+    showSubtitle?: boolean;
+};
 
-export default function AppLogo() {
-    const { name } = usePage().props;
-
+export default function AppLogo({ className, showSubtitle = true }: Props) {
     return (
-        <>
-            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
-                <AppLogoIcon className="size-5 fill-current text-white dark:text-black" />
-            </div>
-            <div className="ml-1 grid flex-1 text-left text-sm">
-                <span className="mb-0.5 truncate leading-tight font-semibold">
-                    {name}
+        <div className={cn('flex min-w-0 items-center gap-2', className)}>
+            <img
+                src="/images/logo-pemprov-ntt.png"
+                alt="Lambang Pemprov Nusa Tenggara Timur"
+                className="size-9 shrink-0 object-contain"
+            />
+            <span className="grid min-w-0 text-left leading-tight">
+                <span className="truncate text-sm font-semibold tracking-tight">
+                    SIPAK-SKPD
                 </span>
-            </div>
-        </>
+                {showSubtitle && (
+                    <span className="text-muted-foreground truncate text-[11px]">
+                        UPTD Penda Kota Kupang
+                    </span>
+                )}
+            </span>
+        </div>
     );
 }
