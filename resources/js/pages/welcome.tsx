@@ -2,7 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowRight, ClipboardList, ShieldCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { Button } from '@/components/ui/button';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login } from '@/routes';
 
 export default function Welcome() {
     const { auth } = usePage().props;
@@ -24,14 +24,9 @@ export default function Welcome() {
                                 </Link>
                             </Button>
                         ) : (
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" asChild>
-                                    <Link href={login()}>Masuk</Link>
-                                </Button>
-                                <Button asChild>
-                                    <Link href={register()}>Daftar</Link>
-                                </Button>
-                            </div>
+                            <Button asChild>
+                                <Link href={login()}>Masuk</Link>
+                            </Button>
                         )}
                     </header>
 

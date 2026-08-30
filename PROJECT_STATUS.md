@@ -2,11 +2,11 @@
 
 ## Fase Saat Ini
 
-PHASE 02 — SIPAK APPLICATION SHELL & DASHBOARD
+PHASE 03 — AUTHENTICATION, USER MANAGEMENT & RBAC
 
 ## Status Fase
 
-Selesai dengan keterbatasan validasi browser runtime yang tercatat.
+Selesai dan tervalidasi pada scope Phase 03.
 
 ## Tanggal
 
@@ -14,120 +14,130 @@ Selesai dengan keterbatasan validasi browser runtime yang tercatat.
 
 ## Ringkasan
 
-Application shell React + Inertia SIPAK telah menggantikan shell starter pada area aplikasi dan halaman publik. Shell memakai Sidebar shadcn yang responsif, header dengan breadcrumb, placeholder notifikasi, menu pengguna, navigasi statis yang siap menerima RBAC, serta dashboard berorientasi pekerjaan dengan data presentasi terisolasi.
+SIPAK sekarang menggunakan autentikasi username + password dengan akun yang hanya dapat dibuat oleh Superadmin. Phase ini menambahkan fondasi role sistem, relasi satu pengguna ke satu Loket, manajemen pengguna administratif, audit trail perubahan pengguna tanpa password, dan otorisasi server-side untuk seluruh route user management. Light Mode menjadi tema default dan pengalih Light/Dark tersedia di header setelah tombol notifikasi.
 
-## Baseline Proyek
+## Perubahan Authentication
 
-- Laravel 13.29.0, PHP 8.3, React 19, Inertia Laravel/React v3, Tailwind CSS v4, TypeScript, shadcn/ui, Wayfinder, dan npm.
-- Database development saat ini SQLite; MySQL tetap target deployment/domain sesuai blueprint.
-- Arsitektur frontend tetap React + Inertia. Tidak ada Livewire, database domain SIPAK, business workflow, atau RBAC backend yang ditambahkan pada fase ini.
-- Tema Amber Minimal dan mekanisme appearance light/dark yang sudah ada dipertahankan.
+- Credential login adalah `username` + password; email tidak dipakai untuk login.
+- Username dinormalisasi lowercase, wajib unik, panjang 3–50 karakter, serta hanya menerima huruf, angka, titik, tanda hubung, dan underscore.
+- Public registration, reset password berbasis email, email verification, dan passkey login tidak lagi terdaftar sebagai route Fortify.
+- Akun inactive tidak dapat login. Middleware `active` juga logout, invalidate session, dan regenerate CSRF token ketika akun yang sudah login dinonaktifkan.
+- Login mencatat `last_login_at` setelah credential valid dan aktif.
 
-## Pekerjaan yang Selesai
+## Perubahan Authorization
 
-- Menerapkan identitas SIPAK untuk shell aplikasi, auth layout, halaman publik, dan judul fallback Inertia.
-- Menyalin aset resmi `blueprint/Logo Pemprov-NTT HD.png` secara utuh ke `public/images/logo-pemprov-ntt.png`; tidak ada pembuatan ulang, filter, atau distorsi logo. Logo dipakai di branding aplikasi dan favicon.
-- Mengadaptasi Sidebar shadcn menjadi navigasi SIPAK yang dikelompokkan: Dashboard, Operasional, SKPD, Verifikasi, Laporan, dan Administrasi.
-- Memusatkan metadata navigasi pada `applicationNavigation`, termasuk metadata role sebagai fondasi UI. Hanya Dashboard aktif; modul bisnis tampil nonaktif dan tidak mengklaim akses atau authorization.
-- Menyediakan header aplikasi dengan sidebar trigger, breadcrumb reusable, placeholder notifikasi yang eksplisit, dan menu pengguna dengan avatar/initials, nama, email, profil/pengaturan, serta logout.
-- Mengadaptasi Dashboard-01 menjadi dashboard SIPAK berorientasi `My Work`: KPI, antrean pekerjaan, BAP terbaru, aktivitas, dan empty state persediaan.
-- Menempatkan data dashboard presentasi di layer terpisah dan mendukung penggantian melalui prop Inertia `dashboard` pada fase integrasi berikutnya.
-- Menambahkan fondasi reusable `EmptyState`, `LoadingState`, dan `ErrorState`.
-- Menambahkan token semantic `success` untuk status selesai, tanpa menambah dependency atau warna feature-level yang terpisah dari design system.
-- Menghapus komponen dan aset starter Laravel yang sudah tidak direferensikan, termasuk tautan repository/dokumentasi starter dan favicon starter.
-- Memperkuat test dashboard untuk memastikan route terproteksi mengembalikan komponen Inertia `dashboard` dan prop pengguna terautentikasi.
+- Gate `manage-users` hanya mengizinkan `UserRole::Superadmin`.
+- Semua route `/users` berada di balik `auth`, `active`, dan `can:manage-users`.
+- Prop Inertia `auth.permissions.manageUsers` dikirim dari server untuk representasi navigasi; React tidak membuat keputusan akses berdasarkan string role.
+
+## Role yang Diimplementasikan
+
+- Superadmin
+- Petugas Loket
+- Petugas Penetapan
+- Kasie Penetapan
+- Petugas Verifikasi
+- Kasie Verifikasi
+- Bendahara Barang
+- Kepala UPTD
+
+Role bersifat fixed/system-defined melalui enum `App\UserRole`; tidak ada CRUD role bebas.
+
+## User Management
+
+- Superadmin dapat melihat daftar pengguna, mencari username/nama, serta memfilter role, status, dan Loket.
+- Superadmin dapat membuat, melihat detail, mengubah username/nama/role/Loket/status, dan mereset password pengguna.
+- Password selalu melalui hash cast Laravel, tidak ditampilkan di respons detail, dan tidak pernah masuk `audit_logs`.
+- Tidak ada hard-delete user dari Profile Settings.
+
+## Relasi User dan Loket
+
+- Tabel `lokets` merupakan fondasi minimal master Loket, tanpa UI/CRUD master data.
+- `users.loket_id` nullable dengan foreign key `nullOnDelete`.
+- Role Petugas Loket wajib memiliki satu Loket; perubahan ke role lain mengosongkan penugasan Loket agar tidak menyisakan relasi yang tidak relevan.
+
+## Perubahan Fortify
+
+- `fortify.username` diubah menjadi `username` dan custom authentication callback hanya menerima pengguna aktif dengan password valid.
+- Throttling login username + IP dan lifecycle session Fortify dipertahankan.
+- 2FA tetap tersedia sebagai layer opsional untuk keputusan bisnis berikutnya.
+- Feature registration, password reset email, email verification, dan passkey dinonaktifkan.
+
+## Perubahan Database
+
+- Migrasi development SQLite sudah dijalankan:
+    - `2026_08_30_085235_create_lokets_table`
+    - `2026_08_30_085236_add_user_management_fields_to_users_table`
+    - `2026_08_30_085238_create_audit_logs_table`
+- `users` kini memiliki `username`, `role`, `loket_id`, `is_active`, dan `last_login_at`; `email` nullable untuk kompatibilitas data lama, bukan credential.
+- Existing user akan diberi username migrasi `user-{id}` agar unique dan dapat diperbarui Superadmin.
+- Target deployment tetap MySQL; tidak ada perubahan konfigurasi environment/database infrastructure.
+
+## Perubahan UI
+
+- Login SIPAK memakai Logo Pemprov NTT, Username, Password, checkbox Ingat saya, dan tombol Masuk; tidak menampilkan Register, lupa password email, verifikasi email, atau passkey.
+- Halaman React + Inertia baru: daftar pengguna, tambah, detail, edit, dan reset password.
+- Sidebar menampilkan menu Pengguna hanya ketika server mengirim permission `manageUsers`.
+- Pengalih tema Light/Dark berada tepat setelah tombol notifikasi di header.
+- Light Mode adalah default server dan client; opsi System dihapus dari preference tema.
 
 ## File yang Ditambahkan
 
-- `public/images/logo-pemprov-ntt.png`
-- `resources/js/components/app/application-navigation.tsx`
-- `resources/js/components/app/navigation.ts`
-- `resources/js/components/app/header-user-menu.tsx`
-- `resources/js/components/app/notification-placeholder.tsx`
-- `resources/js/components/app/empty-state.tsx`
-- `resources/js/components/app/loading-state.tsx`
-- `resources/js/components/app/error-state.tsx`
-- `resources/js/components/dashboard/dashboard-data.ts`
-- `resources/js/components/dashboard/dashboard-metrics.tsx`
-- `resources/js/components/dashboard/my-work.tsx`
-- `resources/js/components/dashboard/recent-baps.tsx`
-- `resources/js/components/dashboard/activity-feed.tsx`
-- `resources/js/components/dashboard/inventory-summary.tsx`
-- `resources/js/components/dashboard/status-badge.tsx`
+- `app/UserRole.php`
+- `app/Actions/UserManagement/RecordUserManagementAudit.php`
+- `app/Http/Controllers/UserManagementController.php`
+- `app/Http/Middleware/EnsureUserIsActive.php`
+- `app/Http/Requests/UserManagement/`
+- `app/Models/AuditLog.php`
+- `app/Models/Loket.php`
+- `database/factories/LoketFactory.php`
+- `database/migrations/2026_08_30_085235_create_lokets_table.php`
+- `database/migrations/2026_08_30_085236_add_user_management_fields_to_users_table.php`
+- `database/migrations/2026_08_30_085238_create_audit_logs_table.php`
+- `lang/en/auth.php`
+- `resources/js/components/app/appearance-toggle.tsx`
+- `resources/js/components/users/user-form-fields.tsx`
+- `resources/js/pages/users/`
+- `tests/Feature/AppearanceTest.php`
+- `tests/Feature/UserManagementTest.php`
 
 ## File yang Diubah
 
 - `PROJECT_STATUS.md`
-- `resources/css/app.css`
-- `resources/js/components/app-logo.tsx`
-- `resources/js/components/app-sidebar.tsx`
-- `resources/js/components/app-sidebar-header.tsx`
-- `resources/js/components/breadcrumbs.tsx`
-- `resources/js/components/user-info.tsx`
-- `resources/js/components/user-menu-content.tsx`
-- `resources/js/layouts/auth/auth-card-layout.tsx`
-- `resources/js/layouts/auth/auth-simple-layout.tsx`
-- `resources/js/layouts/auth/auth-split-layout.tsx`
-- `resources/js/pages/dashboard.tsx`
-- `resources/js/pages/welcome.tsx`
-- `resources/views/app.blade.php`
-- `tests/Feature/DashboardTest.php`
+- konfigurasi, routes, provider, middleware Inertia, model, dan factory autentikasi terkait
+- layout/header/theme React, navigasi aplikasi, halaman login, Profile, Security, Welcome, dan type auth
+- Feature tests autentikasi, profile, security, dan 2FA yang masih relevan
 
 ## File yang Dihapus
 
-- `public/apple-touch-icon.png`
-- `public/favicon.ico`
-- `public/favicon.svg`
-- `resources/js/components/app-header.tsx`
-- `resources/js/components/app-logo-icon.tsx`
-- `resources/js/components/nav-footer.tsx`
-- `resources/js/components/nav-main.tsx`
-- `resources/js/layouts/app/app-header-layout.tsx`
+- Action Fortify untuk public registration dan reset password email
+- Profile delete request dan profile self-delete UI
+- UI/login passkey dan UI pengelolaan passkey
+- halaman auth Register, Forgot Password, Reset Password, dan Verify Email
 
 ## Dependency yang Ditambahkan
 
 Tidak ada.
 
+## Dependency yang Dihapus
+
+Tidak ada. Package/migrasi passkey lama dipertahankan untuk menghindari perubahan dependency atau schema di luar scope; feature dan UI-nya dinonaktifkan.
+
 ## Konfigurasi yang Diubah
 
-- `resources/css/app.css` menambahkan token `success`/`success-foreground` untuk status selesai di light dan dark mode.
-- `resources/views/app.blade.php` memakai favicon Pemprov NTT dan fallback title `SIPAK`.
-- Build Wayfinder tetap menghasilkan helpers route/action yang telah ada; tidak ada route atau dependency baru.
+- `config/fortify.php`: username credential dan feature Fortify.
+- `bootstrap/app.php`: alias middleware `active`.
+- `resources/views/app.blade.php`, `HandleAppearance`, dan `use-appearance`: default Light Mode.
 
-## Keputusan Design System
+## Testing
 
-- Tetap gunakan token semantic shadcn/Tailwind (`primary`, `muted`, `destructive`, `success`, dan seterusnya), bukan warna raw pada feature component.
-- Amber tetap menjadi warna action/waiting. Status completed menggunakan token `success`; clarification dan revision menggunakan treatment destructive; draft menggunakan secondary.
-- Logo Pemprov NTT selalu ditampilkan dengan `object-contain` tanpa efek dekoratif.
+### Feature Test
 
-## Keputusan UI/UX
-
-- Sidebar shadcn yang sama melayani desktop persistent/collapsible dan mobile Sheet, sehingga navigasi tidak memiliki implementasi desktop/mobile yang terpisah.
-- Breadcrumb tetap dikendalikan oleh page layout context; header tidak menghardcode breadcrumb per halaman.
-- Placeholder notifikasi bersifat disabled dan berlabel jelas agar tidak terlihat sebagai sistem notifikasi aktif.
-- Menu modul bisnis yang belum berada dalam scope dibuat nonaktif. Metadata role hanya fondasi presentasi dan belum menyaring, memberi akses, atau menggantikan authorization server-side.
-- Dashboard menampilkan label `Data presentasi` agar angka/aktivitas mock tidak terbaca sebagai data produksi.
-
-## Kondisi Application Shell
-
-- Shell terdiri dari sidebar, header, breadcrumb, main content, user menu, dan navigasi mobile melalui primitive Sidebar/Sheet shadcn yang tersedia.
-- Sidebar menampilkan logo Pemprov NTT, SIPAK, serta instansi UPTD Pendapatan Daerah Wilayah Kota Kupang. Pada keadaan collapsed, logo tetap terlihat dan setiap navigasi aktif memiliki tooltip.
-- Header berisi sidebar trigger, breadcrumb responsif, placeholder notifikasi, serta menu pengguna yang mempertahankan route/profile/logout starter kit.
-- Branding Laravel starter, tautan repository/dokumentasi starter, dan favicon starter tidak lagi dipakai oleh runtime aplikasi.
-
-## Kondisi Dashboard
-
-- Dashboard menampilkan KPI BAP hari ini, menunggu verifikasi, perlu klarifikasi, dan selesai hari ini.
-- `My Work` menjadi fokus utama dengan pending task, need clarification, dan need revision.
-- BAP terbaru menggunakan komponen Table shadcn dengan status semantic dan container overflow horizontal pada layar sempit.
-- Ringkasan persediaan menggunakan Empty State yang menjelaskan kondisi data, bukan copy `Coming Soon`.
-- Semua data dashboard berada pada `dashboard-data.ts` dan dapat digantikan prop `dashboard` ketika phase backend/domain berikutnya tersedia.
-
-## Validasi dan Testing
+PASS — `php artisan test --compact`: 39 test, 168 assertion.
 
 ### npm run check
 
-PASS — 83 file terformat benar; 74 file diperiksa tanpa warning atau lint error.
+PASS — format, lint, dan warning frontend bersih.
 
 ### npm run types:check
 
@@ -135,64 +145,63 @@ PASS — `tsc --noEmit` selesai tanpa error.
 
 ### npm run build
 
-PASS — Vite production build selesai; Wayfinder menghasilkan helpers route/action dan dashboard bundle berhasil dibuat.
+PASS — Vite production build dan generation Wayfinder selesai.
 
-### php artisan test --compact
+### PHPStan
 
-PASS — 39 test, 147 assertion.
+PASS — `vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress` tanpa error.
+
+### Pint
+
+PASS — `vendor/bin/pint --dirty --format agent`.
 
 ### git diff --check
 
 PASS — tidak ada whitespace error.
 
-### Validasi Tambahan
-
-- PASS — `vendor/bin/pint --dirty --format agent`.
-- PASS — test fokus `tests/Feature/DashboardTest.php`: 2 test, 14 assertion.
-- PASS — pemeriksaan source tidak menemukan copy starter repository/documentation/Laravel welcome yang aktif.
-- PASS — inspeksi visual aset sumber mengonfirmasi logo Pemprov NTT sebelum penyalinan ke public asset.
-
 ## Known Issues
 
-- Browser E2E/runtime tidak tersedia: `pestphp/pest-plugin-browser` tidak terpasang. Interaksi Sheet mobile, tooltip collapsed, user dropdown, serta review visual pada breakpoint desktop/tablet/mobile dan light/dark belum dibuktikan oleh browser automation pada fase ini.
-- Aset sumber `blueprint/Logo Pemprov-NTT HD.png` hadir sebagai file untracked dari project owner dan dipertahankan; salinan runtime berada di `public/images/logo-pemprov-ntt.png`.
+- Browser E2E belum tersedia karena `pestphp/pest-plugin-browser` tidak terpasang. SSR feature test membuktikan default Light Mode dan cookie Dark Mode, tetapi interaksi dropdown/filter, pengalih tema header, dan tampilan responsif belum divalidasi dengan browser automation.
 
 ## Technical Debt
 
-- Konfigurasi navigasi sudah membawa metadata role, tetapi filtering menu dan authorization sesungguhnya menunggu RBAC backend.
-- KPI, antrean kerja, BAP terbaru, dan aktivitas dashboard masih data presentasi deterministik sampai prop/domain SIPAK tersedia.
-- Loading dan Error State sudah reusable, namun belum ditampilkan pada dashboard karena dashboard fase ini tidak melakukan request data mandiri/deferred.
+- Audit trail Phase 03 hanya melingkupi perubahan administratif user; modul audit log UI dan audit untuk domain BAP/inventory ditunda untuk phase audit.
+- Package dan tabel passkey lama masih ada tetapi tidak aktif. Penghapusan dependency/schema memerlukan keputusan migration cleanup terpisah.
+- Master Loket belum memiliki CRUD atau data produksi; hanya fondasi relasi untuk Petugas Loket.
 
 ## Open Questions
 
-- Tetapkan mapping role final terhadap tiap modul ketika desain RBAC dan permission database disetujui.
-- Tetapkan kontrak Inertia props dashboard dan definisi metrik produksi sebelum mengganti data presentasi.
+- Apakah 2FA akan diwajibkan untuk role tertentu atau tetap opsional bagi semua pengguna?
+- Apakah satu Petugas Loket tetap selalu satu Loket, atau perlu dukungan multi-loket pada phase domain berikutnya?
+- Siapa yang membuat Superadmin awal pada deployment MySQL pertama?
 
 ## Keputusan Teknis
 
-- Memakai Wayfinder helper untuk route Dashboard, home, login, register, profile, dan logout; tidak memperkenalkan URL frontend hardcoded untuk route aplikasi.
-- Menjaga data presentasi bebas dari query, Eloquent, migration, atau business workflow.
-- Memakai Sidebar shadcn yang tersedia, bukan implementasi sidebar/drawer baru.
+- Authentication = Username + Password.
+- Email bukan credential login dan tetap nullable hanya untuk kompatibilitas data lama.
+- Public registration dinonaktifkan; user hanya dibuat oleh Superadmin.
+- Username lowercased adalah technical decision untuk konsistensi case-insensitive.
+- Password reset dilakukan Superadmin dan tidak ada password, plaintext, atau hash yang masuk audit trail.
+- Inactive user tidak dapat login atau mempertahankan sesi aktif.
+- Authorization role dilakukan di server melalui Gate dan middleware; frontend menerima permission dari server.
+- Terminologi Administrator pada blueprint dipetakan menjadi Superadmin.
+- Light Mode adalah tema default; user hanya dapat memilih Light atau Dark.
 
-## Keputusan Bisnis yang Relevan
+## Keputusan Bisnis
 
-- Tidak ada perubahan aturan bisnis, inventaris, BAP, verifikasi, klarifikasi, pelaporan, audit trail, atau database domain SIPAK.
-- Status dashboard hanya presentasi UI, bukan representasi data operasional atau izin akses produksi.
+- Petugas Loket wajib terkait satu Loket.
+- Role sistem diperlakukan fixed dan tidak memiliki custom role administration pada Phase 03.
 
-## Batasan Phase Berikutnya
+## Security Considerations
 
-- Jangan menganggap menu nonaktif sebagai route, permission, atau modul yang sudah tersedia.
-- Jangan mengganti Fortify, passkeys, route profile, session, atau logout saat mengembangkan modul bisnis tanpa scope khusus.
-- Pertahankan `applicationNavigation` sebagai satu sumber metadata navigasi ketika RBAC diimplementasikan.
+- Fortify tetap menangani rate limiting login, regenerasi sesi, invalidasi sesi logout, CSRF, dan password hashing.
+- Pesan login gagal tetap generik: `Username atau password tidak sesuai.`
+- Gate server-side menolak bypass HTTP pada user management.
+- Input user management tervalidasi, mass assignment dibatasi, dan relasi Loket memakai foreign key.
 
-## Rekomendasi Phase Berikutnya
+## Handoff ke Phase Berikutnya
 
-PHASE 03 sebaiknya memulai modul bisnis yang telah disetujui dengan kontrak data backend, policy/RBAC server-side, dan props Inertia yang menggantikan data presentasi secara bertahap.
-
-## Catatan Handoff
-
-- Dashboard aktif berada di `resources/js/pages/dashboard.tsx`; komposisi dashboard berada di `resources/js/components/dashboard/`.
-- Shell reusable berada pada komponen starter yang diperbarui serta `resources/js/components/app/`.
-- Gunakan `DashboardPresentationData` sebagai bentuk awal prop sebelum menghubungkannya ke source data yang nyata.
-- Setelah browser test tersedia, validasi sidebar expanded/collapsed, Sheet mobile, breadcrumb, user menu, logo, table overflow, serta light/dark secara runtime.
-- Jangan memulai PHASE 03 secara otomatis tanpa instruksi baru.
+- Gunakan Gate/pattern permission server-side yang sama ketika menambahkan modul domain dan permission yang lebih granular.
+- Jangan mengaktifkan kembali route/public UI registration, reset email, email verification, atau passkey tanpa keputusan bisnis dan test baru.
+- Buat seed/prosedur Superadmin awal yang aman untuk deployment MySQL sebelum rollout pertama.
+- Jangan membangun CRUD Master Loket atau modul bisnis BAP/Inventory di luar scope phase berikutnya yang disetujui.

@@ -1,3 +1,4 @@
+import { AppearanceToggle } from '@/components/app/appearance-toggle';
 import { HeaderUserMenu } from '@/components/app/header-user-menu';
 import { NotificationPlaceholder } from '@/components/app/notification-placeholder';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -17,6 +18,7 @@ export function AppSidebarHeader({
             </div>
             <div className="ml-auto flex items-center gap-1">
                 <NotificationPlaceholder />
+                <AppearanceToggle />
                 <HeaderUserMenu />
             </div>
         </header>

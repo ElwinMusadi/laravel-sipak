@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ApplicationNavigation } from '@/components/app/application-navigation';
 import { applicationNavigation } from '@/components/app/navigation';
 import AppLogo from '@/components/app-logo';
@@ -15,6 +15,8 @@ import {
 import { dashboard } from '@/routes';
 
 export function AppSidebar() {
+    const { auth } = usePage().props;
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -34,7 +36,10 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <ApplicationNavigation groups={applicationNavigation} />
+                <ApplicationNavigation
+                    groups={applicationNavigation}
+                    permissions={auth.permissions}
+                />
             </SidebarContent>
 
             <SidebarFooter>
