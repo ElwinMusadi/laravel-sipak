@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 #[Fillable(['actor_id', 'auditable_type', 'auditable_id', 'event', 'old_values', 'new_values'])]
 class AuditLog extends Model
@@ -19,6 +20,16 @@ class AuditLog extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * Get the domain model represented by this audit entry.
+     *
+     * @return MorphTo<Model, $this>
+     */
+    public function auditable(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     /**

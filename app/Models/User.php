@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -45,6 +46,56 @@ class User extends Authenticatable
     public function loket(): BelongsTo
     {
         return $this->belongsTo(Loket::class);
+    }
+
+    /**
+     * Get SKPD boxes registered by the user.
+     *
+     * @return HasMany<SkpdBox, $this>
+     */
+    public function registeredSkpdBoxes(): HasMany
+    {
+        return $this->hasMany(SkpdBox::class, 'created_by');
+    }
+
+    /**
+     * Get SKPD allocations created by the user.
+     *
+     * @return HasMany<SkpdAllocation, $this>
+     */
+    public function createdSkpdAllocations(): HasMany
+    {
+        return $this->hasMany(SkpdAllocation::class, 'created_by');
+    }
+
+    /**
+     * Get SKPD allocations accepted by the user.
+     *
+     * @return HasMany<SkpdAllocation, $this>
+     */
+    public function acceptedSkpdAllocations(): HasMany
+    {
+        return $this->hasMany(SkpdAllocation::class, 'accepted_by');
+    }
+
+    /**
+     * Get BAP records created by the user.
+     *
+     * @return HasMany<Bap, $this>
+     */
+    public function createdBaps(): HasMany
+    {
+        return $this->hasMany(Bap::class, 'created_by');
+    }
+
+    /**
+     * Get BAP cancellation records created by the user.
+     *
+     * @return HasMany<BapCancellation, $this>
+     */
+    public function createdBapCancellations(): HasMany
+    {
+        return $this->hasMany(BapCancellation::class, 'created_by');
     }
 
     /**

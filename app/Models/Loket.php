@@ -23,4 +23,24 @@ class Loket extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Get the SKPD allocations for this loket.
+     *
+     * @return HasMany<SkpdAllocation, $this>
+     */
+    public function skpdAllocations(): HasMany
+    {
+        return $this->hasMany(SkpdAllocation::class);
+    }
+
+    /**
+     * Get the daily BAP records for this loket.
+     *
+     * @return HasMany<Bap, $this>
+     */
+    public function baps(): HasMany
+    {
+        return $this->hasMany(Bap::class);
+    }
 }

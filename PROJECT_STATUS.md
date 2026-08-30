@@ -2,206 +2,228 @@
 
 ## Fase Saat Ini
 
-PHASE 03 — AUTHENTICATION, USER MANAGEMENT & RBAC
+PHASE 04 — DOMAIN & DATABASE FOUNDATION
 
 ## Status Fase
 
-Selesai dan tervalidasi pada scope Phase 03.
+Selesai dan tervalidasi pada scope Phase 04.
 
 ## Tanggal
 
 2026-08-30
 
+## Tujuan
+
+Membangun fondasi domain dan database SIPAK untuk inventaris Box SKPD, alokasi digital ke Loket, pemakaian harian melalui BAP, BAP Batal/Rusak, dan audit trail tanpa membangun halaman bisnis atau workflow verifikasi lengkap.
+
 ## Ringkasan
 
-SIPAK sekarang menggunakan autentikasi username + password dengan akun yang hanya dapat dibuat oleh Superadmin. Phase ini menambahkan fondasi role sistem, relasi satu pengguna ke satu Loket, manajemen pengguna administratif, audit trail perubahan pengguna tanpa password, dan otorisasi server-side untuk seluruh route user management. Light Mode menjadi tema default dan pengalih Light/Dark tersedia di header setelah tombol notifikasi.
+SIPAK kini memakai model inventaris berbasis ledger rentang nomeratur. Satu nomeratur merepresentasikan satu set SKPD berisi lima lembar tindisan, sehingga lima warna tidak dimodelkan sebagai lima record. Box menyimpan sumber stok pusat; allocation menyimpan hak pakai administratif per rentang; BAP menyimpan penggunaan harian; dan `bap_usage_segments` menghubungkan pemakaian BAP dengan satu atau lebih allocation yang berurutan.
 
-## Perubahan Authentication
+Tidak ada perubahan pada autentikasi username + password, role existing, route, UI React/Inertia, dependency, atau konfigurasi database. Development tetap menggunakan SQLite dan target deployment tetap MySQL.
 
-- Credential login adalah `username` + password; email tidak dipakai untuk login.
-- Username dinormalisasi lowercase, wajib unik, panjang 3–50 karakter, serta hanya menerima huruf, angka, titik, tanda hubung, dan underscore.
-- Public registration, reset password berbasis email, email verification, dan passkey login tidak lagi terdaftar sebagai route Fortify.
-- Akun inactive tidak dapat login. Middleware `active` juga logout, invalidate session, dan regenerate CSRF token ketika akun yang sudah login dinonaktifkan.
-- Login mencatat `last_login_at` setelah credential valid dan aktif.
+## Domain Model
 
-## Perubahan Authorization
+- `User` dan `UserRole` tetap menjadi identitas dan role sistem Phase 03; role adalah enum, bukan CRUD tabel role.
+- `Loket` adalah pemegang administratif allocation dan pemilik BAP.
+- `SkpdBox` adalah sumber inventaris pusat yang memiliki satu range nomeratur dan lokasi fisik pusat.
+- `SkpdAllocation` adalah ledger distribusi dan digital handover; entitas ini menggantikan tabel Distribution terpisah karena range, penerimaan, dan lifecycle berada pada satu transaksi yang sama.
+- `Bap` adalah satu dokumen pemakaian untuk satu Loket dan satu tanggal pelayanan.
+- `BapUsageSegment` adalah ledger internal untuk memetakan range BAP ke allocation. Ini diperlukan ketika satu BAP melintasi batas dua allocation yang kontigu.
+- `BapCancellation` merepresentasikan BAP Batal/Rusak sebagai record per nomeratur, bukan BAP kedua.
+- Nomeratur tidak memiliki tabel individual; ia direpresentasikan oleh range Box, Allocation, BAP, dan segment pemakaian.
+- Verification dan Clarification belum memiliki tabel karena workflow tersebut berada di phase berikutnya.
 
-- Gate `manage-users` hanya mengizinkan `UserRole::Superadmin`.
-- Semua route `/users` berada di balik `auth`, `active`, dan `can:manage-users`.
-- Prop Inertia `auth.permissions.manageUsers` dikirim dari server untuk representasi navigasi; React tidak membuat keputusan akses berdasarkan string role.
+## Entity yang Diimplementasikan
 
-## Role yang Diimplementasikan
+- `skpd_boxes`
+- `skpd_allocations`
+- `baps`
+- `bap_usage_segments`
+- `bap_cancellations`
+- `skpd_inventory_locks` sebagai satu technical lock row untuk serialisasi transaksi domain
 
-- Superadmin
-- Petugas Loket
-- Petugas Penetapan
-- Kasie Penetapan
-- Petugas Verifikasi
-- Kasie Verifikasi
-- Bendahara Barang
-- Kepala UPTD
+## Relationship
 
-Role bersifat fixed/system-defined melalui enum `App\UserRole`; tidak ada CRUD role bebas.
+```text
+User ──< SkpdBox (created_by)
+User ──< SkpdAllocation (created_by, accepted_by)
+Loket ──< SkpdAllocation >── SkpdBox
+Loket ──< Bap
+Bap ──< BapUsageSegment >── SkpdAllocation
+Bap ──< BapCancellation
+AuditLog ── morphTo ── SkpdBox | SkpdAllocation | Bap
+```
 
-## User Management
+## Business Rules
 
-- Superadmin dapat melihat daftar pengguna, mencari username/nama, serta memfilter role, status, dan Loket.
-- Superadmin dapat membuat, melihat detail, mengubah username/nama/role/Loket/status, dan mereset password pengguna.
-- Password selalu melalui hash cast Laravel, tidak ditampilkan di respons detail, dan tidak pernah masuk `audit_logs`.
-- Tidak ada hard-delete user dari Profile Settings.
+- Setiap nomeratur disimpan sebagai integer 0–9.999.999 dan ditampilkan sebagai 7 digit dengan zero-padding; nomor tidak reset tahunan atau berdasarkan jenis.
+- Register Box menerima range valid, nomor box unik, tidak overlap, dan harus melanjutkan nomeratur box sebelumnya tanpa loncatan.
+- Ukuran Box normal adalah 2.000 set, tetapi schema tidak memaksakan ukuran tersebut agar penerimaan resmi dengan range berbeda tetap dapat dicatat.
+- Satu Box hanya boleh memiliki allocation aktif untuk satu Loket. Range parsial berikutnya hanya boleh ke Loket yang sama.
+- Allocation harus berada di dalam range Box, tidak boleh overlap, dan baru menjadi persediaan administratif aktif Loket setelah status `accepted`.
+- BAP hanya dapat dibuat oleh user yang terhubung ke Loket pemilik BAP. Satu Loket hanya memiliki satu BAP per tanggal pelayanan.
+- Nomeratur awal BAP pertama adalah awal allocation accepted pertama; BAP berikutnya wajib dimulai dari akhir BAP sebelumnya + 1. Hari tanpa pelayanan tidak memerlukan BAP dan tidak memutus urutan.
+- Range BAP harus tertutup penuh oleh allocation accepted Loket; celah atau pemakaian di luar allocation ditolak.
+- `total_usage` selalu dihitung `numerator_end - numerator_start + 1`. `online_usage_count` harus 0 sampai total tersebut dan tidak menambah total.
+- Nomeratur batal/rusak wajib berada dalam range BAP, unik global, tetap masuk `total_usage`, dan tidak dapat digunakan ulang.
+- BAP dan cancellation tidak dapat diubah melalui action setelah BAP diajukan.
 
-## Relasi User dan Loket
+## Nomeratur Strategy
 
-- Tabel `lokets` merupakan fondasi minimal master Loket, tanpa UI/CRUD master data.
-- `users.loket_id` nullable dengan foreign key `nullOnDelete`.
-- Role Petugas Loket wajib memiliki satu Loket; perubahan ke role lain mengosongkan penugasan Loket agar tidak menyisakan relasi yang tidak relevan.
+Dipilih OPTION B: range/ledger, bukan satu row untuk setiap nomeratur.
 
-## Perubahan Fortify
+- Lebih hemat storage dan tetap efisien untuk Box normal 2.000 set maupun stok jangka panjang.
+- Uniqueness langsung dijaga untuk `box_number`, batas BAP, dan nomeratur cancellation; overlap interval dijaga oleh query transaksi yang terkunci.
+- `bap_usage_segments` mempertahankan traceability dari BAP ke allocation tanpa membuat jutaan record nomeratur individual.
+- Pembatalan bersifat sparse, sehingga hanya nomor batal/rusak yang membutuhkan record individual.
 
-- `fortify.username` diubah menjadi `username` dan custom authentication callback hanya menerima pengguna aktif dengan password valid.
-- Throttling login username + IP dan lifecycle session Fortify dipertahankan.
-- 2FA tetap tersedia sebagai layer opsional untuk keputusan bisnis berikutnya.
-- Feature registration, password reset email, email verification, dan passkey dinonaktifkan.
+## Inventory Strategy
 
-## Perubahan Database
+Dipilih strategi hybrid ledger-derived.
 
-- Migrasi development SQLite sudah dijalankan:
-    - `2026_08_30_085235_create_lokets_table`
-    - `2026_08_30_085236_add_user_management_fields_to_users_table`
-    - `2026_08_30_085238_create_audit_logs_table`
-- `users` kini memiliki `username`, `role`, `loket_id`, `is_active`, dan `last_login_at`; `email` nullable untuk kompatibilitas data lama, bukan credential.
-- Existing user akan diberi username migrasi `user-{id}` agar unique dan dapat diperbarui Superadmin.
-- Target deployment tetap MySQL; tidak ada perubahan konfigurasi environment/database infrastructure.
+- Tidak ada kolom `stock` mutable.
+- Stok tersedia pusat dihitung dari total Box dikurangi allocation pending dan allocation administratif aktif.
+- Stok fisik pusat dihitung dari total Box dikurangi allocation `accepted`/`completed`; allocation pending tetap fisik di pusat tetapi telah direservasi.
+- Kepemilikan administratif adalah `SkpdAllocation.loket_id` setelah accepted, sedangkan lokasi fisik sisa yang belum dialokasikan berasal dari `SkpdBox.central_storage_location`.
+- Pemakaian dihitung dari segment BAP. Sisa allocation adalah quantity allocation dikurangi segment pemakaian.
 
-## Perubahan UI
+## Allocation Strategy
 
-- Login SIPAK memakai Logo Pemprov NTT, Username, Password, checkbox Ingat saya, dan tombol Masuk; tidak menampilkan Register, lupa password email, verifikasi email, atau passkey.
-- Halaman React + Inertia baru: daftar pengguna, tambah, detail, edit, dan reset password.
-- Sidebar menampilkan menu Pengguna hanya ketika server mengirim permission `manageUsers`.
-- Pengalih tema Light/Dark berada tepat setelah tombol notifikasi di header.
-- Light Mode adalah default server dan client; opsi System dihapus dari preference tema.
+Allocation menyatukan distribution dan digital handover:
+
+- `pending`: range direservasi tetapi belum menjadi stok aktif Loket.
+- `accepted`: Loket tujuan menerima handover digital.
+- `completed`: seluruh range allocation telah digunakan dalam BAP.
+- `cancelled`: hanya allocation pending yang dapat dibatalkan oleh pembuatnya; range dapat dialokasikan kembali ke Loket yang sama sesuai aturan ownership.
+
+## State Model
+
+- Box memakai status terhitung, bukan kolom mutable: `available`, `partially_allocated`, `fully_allocated`, dan `depleted`. Penerimaan Box dicatat sebagai event audit, bukan state yang mudah tersinkronisasi secara salah.
+- Allocation: `pending → accepted → completed`, atau `pending → cancelled`.
+- BAP: `draft → submitted`; enum `waiting_verification` sudah disiapkan untuk Phase 05. Workflow verifikasi/approval lanjutan tidak diimplementasikan pada fase ini.
+
+## Database Strategy
+
+- Schema memakai tipe integer unsigned untuk nomeratur dan quantity, date/datetime untuk waktu bisnis, `utf8mb4`/strict mode dari konfigurasi MySQL existing, dan string-backed enum agar state mudah diperluas tanpa migrasi native enum.
+- Foreign key menggunakan `restrictOnDelete` untuk menjaga riwayat domain; `accepted_by` memakai `nullOnDelete` agar riwayat handover tidak memblokir penghapusan user legacy.
+- MySQL menambahkan `CHECK` untuk urutan range, formula quantity, batas online usage, dan nilai state/reason. SQLite development tetap dilindungi oleh action domain karena SQLite tidak menerima `ALTER TABLE ... ADD CONSTRAINT` yang sama.
+- `DB_CONNECTION=sqlite` dan seluruh konfigurasi infrastructure tidak diubah. Enam migrasi Phase 04 telah dijalankan sukses pada `database/database.sqlite` tanpa menghapus data Phase 03.
+
+## Migration
+
+- `2026_08_30_093712_create_skpd_inventory_locks_table`
+- `2026_08_30_093713_create_skpd_boxes_table`
+- `2026_08_30_093715_create_skpd_allocations_table`
+- `2026_08_30_093716_create_baps_table`
+- `2026_08_30_093718_create_bap_usage_segments_table`
+- `2026_08_30_093719_create_bap_cancellations_table`
+
+## Model Eloquent
+
+Model Eloquent baru memakai typed relationship, casts enum/tanggal, mass-assignment allow-list, dan relasi audit polimorfik. User dan Loket diperluas hanya dengan relationship domain; tidak ada perubahan perilaku autentikasi atau otorisasi Phase 03.
+
+## Factory dan Seeder
+
+- Factory ditambahkan untuk `SkpdBox`, `SkpdAllocation`, dan `Bap` untuk data test/development.
+- Tidak ada seeder domain baru agar tidak membuat data yang dapat disalahartikan sebagai stok produksi.
+- Role dan Loket existing tetap dipakai; tidak ada perubahan seed role.
+
+## Index dan Constraint
+
+- Unique: nomor Box, kombinasi `loket_id + service_date` BAP, batas awal/akhir BAP, dan nomeratur cancellation.
+- Index: range Box, Box/status allocation, Loket/status allocation, range allocation, Loket/akhir BAP, status/tanggal BAP, serta range segment pemakaian.
+- Foreign key: seluruh relasi Box, Loket, User, BAP, dan segment.
+- Database membantu validasi bentuk data; overlap interval, satu-Loket-per-Box, coverage BAP, dan sequence tetap berada di application layer karena constraint interval portable tidak tersedia sebagai unique index biasa.
+
+## Concurrency Strategy
+
+Semua operasi tulis domain memakai `DB::transaction(..., attempts: 3)` lalu `lockForUpdate()` terhadap row tunggal `skpd_inventory_locks.id = 1`. Setelah lock diperoleh, action juga mengunci row Box, Allocation, atau BAP yang relevan sebelum memeriksa dan menyimpan data. Strategi ini menserialisasi register Box, allocation, handover, pembuatan BAP, cancellation, dan submission sehingga hanya satu transaksi yang dapat memakai range/urutan yang sama.
+
+## Testing
+
+PASS — `php artisan test --compact`: 59 test, 237 assertion.
+
+Coverage `SkpdInventoryTest` mencakup range Box valid/invalid/duplicate/overlap/gap, partial allocation, ownership satu Loket, range di luar Box, overlap allocation, handover pending/accepted/cancelled, BAP lintas allocation kontigu, formula total, online inclusive, BAP per hari, zero-usage day, sequence jump, BAP di luar allocation, cancellation valid/invalid/duplicate/reuse, dan state BAP submission.
+
+PASS — `vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress` tanpa error.
+
+PASS — `vendor/bin/pint --dirty --format agent`.
+
+`npm run check` dan `npm run types:check` tidak dijalankan karena tidak ada perubahan frontend.
 
 ## File yang Ditambahkan
 
-- `app/UserRole.php`
-- `app/Actions/UserManagement/RecordUserManagementAudit.php`
-- `app/Http/Controllers/UserManagementController.php`
-- `app/Http/Middleware/EnsureUserIsActive.php`
-- `app/Http/Requests/UserManagement/`
-- `app/Models/AuditLog.php`
-- `app/Models/Loket.php`
-- `database/factories/LoketFactory.php`
-- `database/migrations/2026_08_30_085235_create_lokets_table.php`
-- `database/migrations/2026_08_30_085236_add_user_management_fields_to_users_table.php`
-- `database/migrations/2026_08_30_085238_create_audit_logs_table.php`
-- `lang/en/auth.php`
-- `resources/js/components/app/appearance-toggle.tsx`
-- `resources/js/components/users/user-form-fields.tsx`
-- `resources/js/pages/users/`
-- `tests/Feature/AppearanceTest.php`
-- `tests/Feature/UserManagementTest.php`
+- Enum domain: `app/SkpdBoxStatus.php`, `app/SkpdAllocationStatus.php`, `app/BapStatus.php`, `app/BapCancellationReason.php`
+- Action domain: `app/Actions/SkpdInventory/`
+- Model: `app/Models/SkpdBox.php`, `SkpdAllocation.php`, `Bap.php`, `BapUsageSegment.php`, `BapCancellation.php`
+- Factory: `database/factories/SkpdBoxFactory.php`, `SkpdAllocationFactory.php`, `BapFactory.php`
+- Enam migration Phase 04 pada `database/migrations/`
+- Test: `tests/Feature/SkpdInventoryTest.php`
+- Rule durable: `.ai/rules/skpd-inventory.md`
 
 ## File yang Diubah
 
 - `PROJECT_STATUS.md`
-- konfigurasi, routes, provider, middleware Inertia, model, dan factory autentikasi terkait
-- layout/header/theme React, navigasi aplikasi, halaman login, Profile, Security, Welcome, dan type auth
-- Feature tests autentikasi, profile, security, dan 2FA yang masih relevan
+- `app/Models/AuditLog.php`
+- `app/Models/User.php`
+- `app/Models/Loket.php`
+- `.ai/rules/index.md`
 
 ## File yang Dihapus
 
-- Action Fortify untuk public registration dan reset password email
-- Profile delete request dan profile self-delete UI
-- UI/login passkey dan UI pengelolaan passkey
-- halaman auth Register, Forgot Password, Reset Password, dan Verify Email
-
-## Dependency yang Ditambahkan
-
 Tidak ada.
 
-## Dependency yang Dihapus
+## Dependency
 
-Tidak ada. Package/migrasi passkey lama dipertahankan untuk menghindari perubahan dependency atau schema di luar scope; feature dan UI-nya dinonaktifkan.
+Tidak ada dependency yang ditambah atau dihapus.
 
-## Konfigurasi yang Diubah
+## Konfigurasi
 
-- `config/fortify.php`: username credential dan feature Fortify.
-- `bootstrap/app.php`: alias middleware `active`.
-- `resources/views/app.blade.php`, `HandleAppearance`, dan `use-appearance`: default Light Mode.
-
-## Testing
-
-### Feature Test
-
-PASS — `php artisan test --compact`: 39 test, 168 assertion.
-
-### npm run check
-
-PASS — format, lint, dan warning frontend bersih.
-
-### npm run types:check
-
-PASS — `tsc --noEmit` selesai tanpa error.
-
-### npm run build
-
-PASS — Vite production build dan generation Wayfinder selesai.
-
-### PHPStan
-
-PASS — `vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress` tanpa error.
-
-### Pint
-
-PASS — `vendor/bin/pint --dirty --format agent`.
-
-### git diff --check
-
-PASS — tidak ada whitespace error.
+Tidak ada konfigurasi environment, database connection, authentication, Fortify, atau frontend yang diubah.
 
 ## Known Issues
 
-- Browser E2E belum tersedia karena `pestphp/pest-plugin-browser` tidak terpasang. SSR feature test membuktikan default Light Mode dan cookie Dark Mode, tetapi interaksi dropdown/filter, pengalih tema header, dan tampilan responsif belum divalidasi dengan browser automation.
+- Tidak ada server MySQL target yang dikonfigurasi pada workspace ini, sehingga DDL MySQL dan locking paralel belum diuji langsung terhadap server target. Migrasi dan seluruh test berjalan pada SQLite development/test database.
+- Tidak ada browser E2E karena Phase 04 tidak membuat UI bisnis dan plugin browser tidak tersedia.
 
 ## Technical Debt
 
-- Audit trail Phase 03 hanya melingkupi perubahan administratif user; modul audit log UI dan audit untuk domain BAP/inventory ditunda untuk phase audit.
-- Package dan tabel passkey lama masih ada tetapi tidak aktif. Penghapusan dependency/schema memerlukan keputusan migration cleanup terpisah.
-- Master Loket belum memiliki CRUD atau data produksi; hanya fondasi relasi untuk Petugas Loket.
+- `waiting_verification`, verification berjenjang, clarification, finalisasi Bendahara Barang, dan bulk sign-off belum diimplementasikan; hanya state foundation yang tersedia.
+- Pemisahan reporting antara SIGNAL dan PRO NTT belum dimodelkan karena kebutuhan pelaporan belum diputuskan. Saat ini hanya total `online_usage_count` yang inklusif.
+- Master alasan batal/rusak belum dibuat; reason saat ini enum `cancelled` atau `damaged` dengan description opsional.
+- Validasi konkurensi nyata pada MySQL perlu dijalankan di environment target sebelum deployment.
 
 ## Open Questions
 
-- Apakah 2FA akan diwajibkan untuk role tertentu atau tetap opsional bagi semua pengguna?
-- Apakah satu Petugas Loket tetap selalu satu Loket, atau perlu dukungan multi-loket pada phase domain berikutnya?
-- Siapa yang membuat Superadmin awal pada deployment MySQL pertama?
+- Apakah SIGNAL dan PRO NTT harus disimpan sebagai channel terpisah untuk laporan?
+- Apakah alasan batal/rusak harus menjadi master data yang dikelola Superadmin?
+- Siapa yang berwenang membatalkan allocation pending selain pembuatnya, dan apakah allocation accepted dapat ditarik kembali melalui workflow khusus?
+- Bagaimana kebijakan jika Box fisik resmi diterima dengan gap nomeratur yang membutuhkan justifikasi?
 
 ## Keputusan Teknis
 
-- Authentication = Username + Password.
-- Email bukan credential login dan tetap nullable hanya untuk kompatibilitas data lama.
-- Public registration dinonaktifkan; user hanya dibuat oleh Superadmin.
-- Username lowercased adalah technical decision untuk konsistensi case-insensitive.
-- Password reset dilakukan Superadmin dan tidak ada password, plaintext, atau hash yang masuk audit trail.
-- Inactive user tidak dapat login atau mempertahankan sesi aktif.
-- Authorization role dilakukan di server melalui Gate dan middleware; frontend menerima permission dari server.
-- Terminologi Administrator pada blueprint dipetakan menjadi Superadmin.
-- Light Mode adalah tema default; user hanya dapat memilih Light atau Dark.
+- Nomeratur disimpan sebagai integer dan diformat 7 digit saat presentasi.
+- Range/ledger dipilih di atas record nomeratur individual.
+- Distribution digabung ke allocation untuk satu sumber lifecycle dan audit.
+- BAP dapat memiliki beberapa usage segment agar pemakaian lintas allocation kontigu tetap akurat.
+- Inventory dihitung dari ledger, bukan kolom stok mutable.
+- Lock transaksi global yang kecil digunakan untuk menjaga operasi interval yang tidak dapat ditutup oleh unique index biasa.
+- AuditLog Phase 03 dipakai ulang melalui relasi polimorfik.
 
 ## Keputusan Bisnis
 
-- Petugas Loket wajib terkait satu Loket.
-- Role sistem diperlakukan fixed dan tidak memiliki custom role administration pada Phase 03.
+- Satu nomeratur adalah satu set SKPD lima lembar.
+- Satu Box tidak boleh dibagi ke beberapa Loket; partial allocation hanya boleh kepada Loket yang sama.
+- Allocation pending bukan persediaan aktif Loket.
+- Satu BAP hanya untuk satu Loket dan satu hari pelayanan; hari zero usage tidak menghasilkan BAP.
+- Nomeratur batal/rusak tetap dikonsumsi dan tidak dapat digunakan ulang.
+- SKPD online adalah bagian dari total pemakaian, bukan tambahan total.
 
-## Security Considerations
+## Handoff ke Phase 05
 
-- Fortify tetap menangani rate limiting login, regenerasi sesi, invalidasi sesi logout, CSRF, dan password hashing.
-- Pesan login gagal tetap generik: `Username atau password tidak sesuai.`
-- Gate server-side menolak bypass HTTP pada user management.
-- Input user management tervalidasi, mass assignment dibatasi, dan relasi Loket memakai foreign key.
-
-## Handoff ke Phase Berikutnya
-
-- Gunakan Gate/pattern permission server-side yang sama ketika menambahkan modul domain dan permission yang lebih granular.
-- Jangan mengaktifkan kembali route/public UI registration, reset email, email verification, atau passkey tanpa keputusan bisnis dan test baru.
-- Buat seed/prosedur Superadmin awal yang aman untuk deployment MySQL sebelum rollout pertama.
-- Jangan membangun CRUD Master Loket atau modul bisnis BAP/Inventory di luar scope phase berikutnya yang disetujui.
+- Bangun route, policy, request validation, dan UI inventory/BAP di atas action `app/Actions/SkpdInventory/`; jangan menulis mutation langsung ke model.
+- Pertahankan urutan lock `skpd_inventory_locks` sebelum lock entity domain saat menambah action baru.
+- Gunakan `BapUsageSegment` untuk setiap perubahan yang perlu menghitung stok terpakai/sisa berdasarkan BAP.
+- Implementasikan transisi `submitted → waiting_verification` dan workflow verifikasi berikutnya secara eksplisit, disertai policy dan audit baru.
+- Jangan mengaktifkan kembali public registration, reset password email, email verification, passkey, atau 2FA tanpa keputusan bisnis dan test terpisah.
