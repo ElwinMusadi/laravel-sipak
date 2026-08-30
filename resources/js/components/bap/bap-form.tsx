@@ -1,0 +1,374 @@
+import { Form, Link } from '@inertiajs/react';
+import { useState } from 'react';
+import SkpdBapController from '@/actions/App/Http/Controllers/SkpdBapController';
+import InputError from '@/components/input-error';
+import {
+    formatNomeratur,
+    formatQuantity,
+    formatRange,
+} from '@/components/inventory/format';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { index } from '@/routes/baps';
+
+type Allocation = {
+    id: number;
+    numerator_start: number;
+    numerator_end: number;
+    remaining_quantity: number;
+};
+
+type Props = {
+    mode: 'create' | 'edit';
+    bap?: {
+        id: number;
+        service_date: string;
+        numerator_start: number;
+        numerator_end: number;
+        online_usage_count: number;
+        loket: { id: number; name: string };
+    };
+    loket?: { id: number; name: string };
+    defaultServiceDate?: string;
+    expectedNumeratorStart?: number | null;
+    allocations?: Allocation[];
+};
+
+function digitsOnly(value: string): string {
+    return value.replace(/\D/g, '');
+}
+
+function numeratorDigits(value: string): string {
+    return digitsOnly(value).slice(0, 7);
+}
+
+function quantityForRange(start: string, end: string): number | null {
+    if (!/^\d{7}$/.test(start) || !/^\d{7}$/.test(end)) {
+        return null;
+    }
+
+    const quantity = Number(end) - Number(start) + 1;
+
+    return quantity > 0 ? quantity : null;
+}
+
+export function BapForm({
+    mode,
+    bap,
+    loket,
+    defaultServiceDate,
+    expectedNumeratorStart,
+    allocations = [],
+}: Props) {
+    const formLoket = bap?.loket ?? loket;
+    const [serviceDate, setServiceDate] = useState(
+        bap?.service_date ?? defaultServiceDate ?? '',
+    );
+    const [numeratorStart, setNumeratorStart] = useState(
+        bap
+            ? formatNomeratur(bap.numerator_start)
+            : expectedNumeratorStart === null ||
+                expectedNumeratorStart === undefined
+              ? ''
+              : formatNomeratur(expectedNumeratorStart),
+    );
+    const [numeratorEnd, setNumeratorEnd] = useState(
+        bap ? formatNomeratur(bap.numerator_end) : '',
+    );
+    const [onlineUsageCount, setOnlineUsageCount] = useState(
+        bap ? String(bap.online_usage_count) : '0',
+    );
+    const totalUsage = quantityForRange(numeratorStart, numeratorEnd);
+    const onlineUsage = onlineUsageCount === '' ? 0 : Number(onlineUsageCount);
+    const onlineIsValid = Number.isInteger(onlineUsage) && onlineUsage >= 0;
+    const nonOnlineUsage =
+        totalUsage !== null && onlineIsValid && onlineUsage <= totalUsage
+            ? totalUsage - onlineUsage
+            : null;
+    const formProps =
+        mode === 'create'
+            ? SkpdBapController.store.form()
+            : SkpdBapController.update.form(bap?.id ?? 0);
+
+    return (
+        <div className="grid max-w-5xl gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <Card>
+                <CardContent>
+                    <Form {...formProps} className="grid gap-6">
+                        {({ errors, processing }) => (
+                            <>
+                                <section className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label>Loket</Label>
+                                        <div className="bg-muted rounded-xl px-3 py-2.5 text-sm font-medium">
+                                            {formLoket?.name ??
+                                                'Loket tidak tersedia'}
+                                        </div>
+                                        <p className="text-muted-foreground text-xs">
+                                            Loket ditetapkan dari akun Petugas
+                                            dan tidak dapat diubah dari form
+                                            ini.
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="service_date">
+                                            Tanggal pelayanan
+                                        </Label>
+                                        <Input
+                                            id="service_date"
+                                            name="service_date"
+                                            type="date"
+                                            value={serviceDate}
+                                            max={new Date()
+                                                .toISOString()
+                                                .slice(0, 10)}
+                                            onChange={(event) =>
+                                                setServiceDate(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(
+                                                errors.service_date,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.service_date}
+                                        />
+                                    </div>
+                                </section>
+
+                                <section className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="numerator_start">
+                                            Nomeratur awal
+                                        </Label>
+                                        <Input
+                                            id="numerator_start"
+                                            name="numerator_start"
+                                            value={numeratorStart}
+                                            onChange={(event) =>
+                                                setNumeratorStart(
+                                                    numeratorDigits(
+                                                        event.target.value,
+                                                    ),
+                                                )
+                                            }
+                                            className="font-mono tabular-nums"
+                                            inputMode="numeric"
+                                            maxLength={7}
+                                            placeholder="0582608"
+                                            aria-invalid={Boolean(
+                                                errors.numerator_start,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.numerator_start}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="numerator_end">
+                                            Nomeratur akhir
+                                        </Label>
+                                        <Input
+                                            id="numerator_end"
+                                            name="numerator_end"
+                                            value={numeratorEnd}
+                                            onChange={(event) =>
+                                                setNumeratorEnd(
+                                                    numeratorDigits(
+                                                        event.target.value,
+                                                    ),
+                                                )
+                                            }
+                                            className="font-mono tabular-nums"
+                                            inputMode="numeric"
+                                            maxLength={7}
+                                            placeholder="0582620"
+                                            aria-invalid={Boolean(
+                                                errors.numerator_end,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.numerator_end}
+                                        />
+                                    </div>
+                                </section>
+
+                                <section className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="online_usage_count">
+                                            SKPD pembayaran online
+                                        </Label>
+                                        <Input
+                                            id="online_usage_count"
+                                            name="online_usage_count"
+                                            value={onlineUsageCount}
+                                            onChange={(event) =>
+                                                setOnlineUsageCount(
+                                                    digitsOnly(
+                                                        event.target.value,
+                                                    ),
+                                                )
+                                            }
+                                            inputMode="numeric"
+                                            placeholder="0"
+                                            aria-invalid={Boolean(
+                                                errors.online_usage_count,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.online_usage_count}
+                                        />
+                                    </div>
+                                    <div className="bg-muted rounded-xl p-4">
+                                        <p className="text-muted-foreground text-sm">
+                                            Total pemakaian
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold tabular-nums">
+                                            {totalUsage === null
+                                                ? '—'
+                                                : `${formatQuantity(totalUsage)} set`}
+                                        </p>
+                                        <p className="text-muted-foreground mt-1 text-xs">
+                                            Dihitung otomatis dari nomeratur
+                                            awal hingga akhir.
+                                        </p>
+                                    </div>
+                                </section>
+
+                                <div className="flex flex-wrap justify-end gap-3">
+                                    <Button variant="outline" asChild>
+                                        <Link href={index()}>Batal</Link>
+                                    </Button>
+                                    <Button disabled={processing}>
+                                        {mode === 'create'
+                                            ? 'Simpan draft BAP'
+                                            : 'Simpan perubahan draft'}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </Form>
+                </CardContent>
+            </Card>
+
+            <div className="grid content-start gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Review pemakaian</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 text-sm">
+                        <ReviewRow
+                            label="Loket"
+                            value={formLoket?.name ?? '—'}
+                        />
+                        <ReviewRow
+                            label="Tanggal"
+                            value={serviceDate || 'Belum diisi'}
+                        />
+                        <ReviewRow
+                            label="Nomeratur"
+                            value={
+                                totalUsage === null
+                                    ? 'Masukkan range valid'
+                                    : formatRange(
+                                          Number(numeratorStart),
+                                          Number(numeratorEnd),
+                                      )
+                            }
+                            mono
+                        />
+                        <ReviewRow
+                            label="Total"
+                            value={
+                                totalUsage === null
+                                    ? '—'
+                                    : `${formatQuantity(totalUsage)} set`
+                            }
+                        />
+                        <ReviewRow
+                            label="Online"
+                            value={
+                                onlineIsValid
+                                    ? `${formatQuantity(onlineUsage)} set`
+                                    : 'Tidak valid'
+                            }
+                        />
+                        <ReviewRow
+                            label="Non-online"
+                            value={
+                                nonOnlineUsage === null
+                                    ? '—'
+                                    : `${formatQuantity(nonOnlineUsage)} set`
+                            }
+                        />
+                        <ReviewRow
+                            label="Status"
+                            value="Draft — belum diajukan"
+                        />
+                    </CardContent>
+                </Card>
+
+                {mode === 'create' ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Alokasi aktif Loket</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 text-sm">
+                            {allocations.length === 0 ? (
+                                <p className="text-muted-foreground">
+                                    Belum ada alokasi accepted yang dapat
+                                    digunakan.
+                                </p>
+                            ) : (
+                                allocations.map((allocation) => (
+                                    <div
+                                        key={allocation.id}
+                                        className="border-border grid gap-1 rounded-xl border p-3"
+                                    >
+                                        <span className="font-mono text-xs font-medium">
+                                            {formatRange(
+                                                allocation.numerator_start,
+                                                allocation.numerator_end,
+                                            )}
+                                        </span>
+                                        <span className="text-muted-foreground text-xs">
+                                            Sisa{' '}
+                                            {formatQuantity(
+                                                allocation.remaining_quantity,
+                                            )}{' '}
+                                            set
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </CardContent>
+                    </Card>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function ReviewRow({
+    label,
+    value,
+    mono = false,
+}: {
+    label: string;
+    value: string;
+    mono?: boolean;
+}) {
+    return (
+        <div className="flex items-start justify-between gap-4">
+            <span className="text-muted-foreground">{label}</span>
+            <span
+                className={`text-right font-medium ${mono ? 'font-mono text-xs whitespace-nowrap' : ''}`}
+            >
+                {value}
+            </span>
+        </div>
+    );
+}

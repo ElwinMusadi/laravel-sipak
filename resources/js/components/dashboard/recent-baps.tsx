@@ -1,3 +1,5 @@
+import { EmptyState } from '@/components/app/empty-state';
+import { formatDate, formatDateTime } from '@/components/inventory/format';
 import {
     Card,
     CardContent,
@@ -22,38 +24,51 @@ export function RecentBaps({ items }: { items: readonly RecentBap[] }) {
             <CardHeader>
                 <CardTitle>BAP Terbaru</CardTitle>
                 <CardDescription>
-                    Catatan presentasi untuk daftar BAP terakhir.
+                    BAP aktual pada scope akses Anda.
                 </CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto px-0">
-                <Table className="min-w-155">
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="pl-6">Nomor BAP</TableHead>
-                            <TableHead>Loket</TableHead>
-                            <TableHead>Waktu</TableHead>
-                            <TableHead className="pr-6 text-right">
-                                Status
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {items.map((item) => (
-                            <TableRow key={item.number}>
-                                <TableCell className="pl-6 font-medium">
-                                    {item.number}
-                                </TableCell>
-                                <TableCell>{item.loket}</TableCell>
-                                <TableCell className="text-muted-foreground">
-                                    {item.submittedAt}
-                                </TableCell>
-                                <TableCell className="pr-6 text-right">
-                                    <StatusBadge status={item.status} />
-                                </TableCell>
+                {items.length === 0 ? (
+                    <EmptyState
+                        title="Belum ada BAP Pemakaian."
+                        description="BAP yang dibuat pada scope Anda akan muncul di sini."
+                    />
+                ) : (
+                    <Table className="min-w-155">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="pl-6">ID BAP</TableHead>
+                                <TableHead>Loket</TableHead>
+                                <TableHead>Tanggal</TableHead>
+                                <TableHead>Waktu submit</TableHead>
+                                <TableHead className="pr-6 text-right">
+                                    Status
+                                </TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {items.map((item) => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="pl-6 font-medium tabular-nums">
+                                        #{item.id}
+                                    </TableCell>
+                                    <TableCell>{item.loket}</TableCell>
+                                    <TableCell className="whitespace-nowrap">
+                                        {formatDate(item.serviceDate)}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                                        {item.submittedAt
+                                            ? formatDateTime(item.submittedAt)
+                                            : 'Belum diajukan'}
+                                    </TableCell>
+                                    <TableCell className="pr-6 text-right">
+                                        <StatusBadge status={item.status} />
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
             </CardContent>
         </Card>
     );

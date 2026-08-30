@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleAlert, Clock3, FileText } from 'lucide-react';
+import { Clock3, FileText } from 'lucide-react';
 import {
     Card,
     CardContent,
@@ -11,8 +11,6 @@ import type { DashboardMetric } from './dashboard-data';
 const metricIcons = {
     today: FileText,
     waiting: Clock3,
-    clarification: CircleAlert,
-    completed: CheckCircle2,
 };
 
 export function DashboardMetrics({

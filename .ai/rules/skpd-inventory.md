@@ -10,3 +10,6 @@ Registering boxes, creating or accepting allocations, creating BAP, recording ca
 
 ## Pending allocation cancellation
 Only the creator may cancel a pending allocation. Accepted allocations remain immutable in this phase; a future withdrawal workflow requires its own authorization, audit, and state-transition design.
+
+## Draft BAP sequence preservation
+BAP draft updates must acquire the shared inventory lock and preserve per-Loket numerator continuity. Once a later BAP exists, reject range changes to the earlier draft; usage segments remain the ledger source of truth and total usage stays derived.

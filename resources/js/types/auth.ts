@@ -18,6 +18,11 @@ export type Auth = {
     user: User | null;
     permissions: {
         manageUsers: boolean;
+        viewSkpdInventory: boolean;
+        viewCentralSkpdInventory: boolean;
+        manageSkpdInventory: boolean;
+        viewBaps: boolean;
+        createBap: boolean;
     };
 };
 

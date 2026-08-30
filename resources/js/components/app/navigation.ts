@@ -17,11 +17,12 @@ import {
     Users,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
 type NavigationHref = NonNullable<InertiaLinkProps['href']>;
 
-export type ApplicationPermission = 'manageUsers';
+export type ApplicationPermission = 'manageUsers' | 'viewBaps';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -54,7 +55,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'BAP Pemakaian',
                 icon: FileText,
-                availability: 'planned',
+                href: bapsIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBaps',
             },
             {
                 title: 'BAP Batal/Rusak',

@@ -2,228 +2,192 @@
 
 ## Fase Saat Ini
 
-PHASE 04 — DOMAIN & DATABASE FOUNDATION
+PHASE 06 — BAP PEMAKAIAN
 
 ## Status Fase
 
-Selesai dan tervalidasi pada scope Phase 04.
+Selesai dan tervalidasi pada scope Phase 06.
 
 ## Tanggal
 
 2026-08-30
 
-## Tujuan
-
-Membangun fondasi domain dan database SIPAK untuk inventaris Box SKPD, alokasi digital ke Loket, pemakaian harian melalui BAP, BAP Batal/Rusak, dan audit trail tanpa membangun halaman bisnis atau workflow verifikasi lengkap.
-
 ## Ringkasan
 
-SIPAK kini memakai model inventaris berbasis ledger rentang nomeratur. Satu nomeratur merepresentasikan satu set SKPD berisi lima lembar tindisan, sehingga lima warna tidak dimodelkan sebagai lima record. Box menyimpan sumber stok pusat; allocation menyimpan hak pakai administratif per rentang; BAP menyimpan penggunaan harian; dan `bap_usage_segments` menghubungkan pemakaian BAP dengan satu atau lebih allocation yang berurutan.
+Phase 06 menghadirkan workflow BAP Pemakaian SKPD dari draft sampai submit, daftar dan detail sesuai scope akses, serta integrasi dashboard dari data BAP aktual. Implementasi memakai range-ledger Phase 04 dan allocation Phase 05; tidak ada pengurangan stock mutable, workflow pembatalan/rusak, atau verifikasi BAP pada fase ini.
 
-Tidak ada perubahan pada autentikasi username + password, role existing, route, UI React/Inertia, dependency, atau konfigurasi database. Development tetap menggunakan SQLite dan target deployment tetap MySQL.
+## BAP Pemakaian
 
-## Domain Model
+- Petugas Loket membuat, melihat, memperbarui draft, dan mengirim BAP milik Loket yang ditugaskan kepadanya.
+- Satu BAP memiliki tanggal pelayanan, range nomeratur, total pemakaian derived, pemakaian SKPD Online, pemakaian non-Online, creator, Loket, status, serta waktu submit.
+- Form tidak menyediakan pilihan Loket; Loket selalu berasal dari user autentikasi.
+- Tidak ada nomor/formal BAP fiktif. UI memakai ID BAP sistem dan nomor audit internal yang tersedia.
 
-- `User` dan `UserRole` tetap menjadi identitas dan role sistem Phase 03; role adalah enum, bukan CRUD tabel role.
-- `Loket` adalah pemegang administratif allocation dan pemilik BAP.
-- `SkpdBox` adalah sumber inventaris pusat yang memiliki satu range nomeratur dan lokasi fisik pusat.
-- `SkpdAllocation` adalah ledger distribusi dan digital handover; entitas ini menggantikan tabel Distribution terpisah karena range, penerimaan, dan lifecycle berada pada satu transaksi yang sama.
-- `Bap` adalah satu dokumen pemakaian untuk satu Loket dan satu tanggal pelayanan.
-- `BapUsageSegment` adalah ledger internal untuk memetakan range BAP ke allocation. Ini diperlukan ketika satu BAP melintasi batas dua allocation yang kontigu.
-- `BapCancellation` merepresentasikan BAP Batal/Rusak sebagai record per nomeratur, bukan BAP kedua.
-- Nomeratur tidak memiliki tabel individual; ia direpresentasikan oleh range Box, Allocation, BAP, dan segment pemakaian.
-- Verification dan Clarification belum memiliki tabel karena workflow tersebut berada di phase berikutnya.
+## BAP Lifecycle
 
-## Entity yang Diimplementasikan
+- Create menghasilkan `draft`.
+- Draft dapat diubah hanya oleh pembuat Petugas Loket yang memiliki Loket BAP.
+- Submit mengubah status domain menjadi `submitted`, yang dipresentasikan sebagai `Menunggu verifikasi`.
+- BAP submitted bersifat read-only. Tahap verifikasi, klarifikasi, finalisasi, dan reporting tidak ditambahkan.
 
-- `skpd_boxes`
-- `skpd_allocations`
-- `baps`
-- `bap_usage_segments`
-- `bap_cancellations`
-- `skpd_inventory_locks` sebagai satu technical lock row untuk serialisasi transaksi domain
+## BAP Usage Segment
 
-## Relationship
+- Pemakaian dicatat sebagai `BapUsageSegment` per allocation yang dilintasi range BAP.
+- Satu BAP dapat memakai beberapa allocation `accepted` atau `completed` dalam satu range kontinu.
+- Total pemakaian dan sisa allocation tetap dihitung dari ledger segment, bukan kolom stock mutable.
+- Create dan update mencatat audit BAP serta perubahan segment yang bernilai bisnis.
 
-```text
-User ──< SkpdBox (created_by)
-User ──< SkpdAllocation (created_by, accepted_by)
-Loket ──< SkpdAllocation >── SkpdBox
-Loket ──< Bap
-Bap ──< BapUsageSegment >── SkpdAllocation
-Bap ──< BapCancellation
-AuditLog ── morphTo ── SkpdBox | SkpdAllocation | Bap
-```
+## Nomeratur
 
-## Business Rules
+- Input browser menerima tepat tujuh digit dan mempertahankan leading zero.
+- Domain dan database tetap menggunakan integer; presentasi menggunakan zero-padding tujuh digit.
+- Total pemakaian selalu dihitung sebagai `end - start + 1`; nilainya tidak dipercaya dari request frontend.
 
-- Setiap nomeratur disimpan sebagai integer 0–9.999.999 dan ditampilkan sebagai 7 digit dengan zero-padding; nomor tidak reset tahunan atau berdasarkan jenis.
-- Register Box menerima range valid, nomor box unik, tidak overlap, dan harus melanjutkan nomeratur box sebelumnya tanpa loncatan.
-- Ukuran Box normal adalah 2.000 set, tetapi schema tidak memaksakan ukuran tersebut agar penerimaan resmi dengan range berbeda tetap dapat dicatat.
-- Satu Box hanya boleh memiliki allocation aktif untuk satu Loket. Range parsial berikutnya hanya boleh ke Loket yang sama.
-- Allocation harus berada di dalam range Box, tidak boleh overlap, dan baru menjadi persediaan administratif aktif Loket setelah status `accepted`.
-- BAP hanya dapat dibuat oleh user yang terhubung ke Loket pemilik BAP. Satu Loket hanya memiliki satu BAP per tanggal pelayanan.
-- Nomeratur awal BAP pertama adalah awal allocation accepted pertama; BAP berikutnya wajib dimulai dari akhir BAP sebelumnya + 1. Hari tanpa pelayanan tidak memerlukan BAP dan tidak memutus urutan.
-- Range BAP harus tertutup penuh oleh allocation accepted Loket; celah atau pemakaian di luar allocation ditolak.
-- `total_usage` selalu dihitung `numerator_end - numerator_start + 1`. `online_usage_count` harus 0 sampai total tersebut dan tidak menambah total.
-- Nomeratur batal/rusak wajib berada dalam range BAP, unik global, tetap masuk `total_usage`, dan tidak dapat digunakan ulang.
-- BAP dan cancellation tidak dapat diubah melalui action setelah BAP diajukan.
+## Sequence Validation
 
-## Nomeratur Strategy
+- BAP pertama Loket dimulai dari awal allocation aktif pertama; BAP berikutnya harus dimulai tepat setelah akhir BAP sebelumnya.
+- Tanggal BAP tidak boleh melampaui hari ini atau mendahului BAP terakhir Loket.
+- Satu Loket hanya dapat memiliki satu BAP untuk satu tanggal.
+- Perubahan range draft ditolak jika sudah ada BAP berikutnya, sehingga kesinambungan nomeratur tidak dapat rusak.
+- Semua validasi range, ownership allocation, dan overlap berjalan di server di bawah transaction serta global inventory lock.
 
-Dipilih OPTION B: range/ledger, bukan satu row untuk setiap nomeratur.
+## SKPD Online
 
-- Lebih hemat storage dan tetap efisien untuk Box normal 2.000 set maupun stok jangka panjang.
-- Uniqueness langsung dijaga untuk `box_number`, batas BAP, dan nomeratur cancellation; overlap interval dijaga oleh query transaksi yang terkunci.
-- `bap_usage_segments` mempertahankan traceability dari BAP ke allocation tanpa membuat jutaan record nomeratur individual.
-- Pembatalan bersifat sparse, sehingga hanya nomor batal/rusak yang membutuhkan record individual.
+- Nilai Online adalah bilangan bulat non-negatif dan merupakan bagian dari total pemakaian.
+- Non-Online dihitung read-only sebagai `total pemakaian - Online`.
+- Request dengan Online melebihi total atau nilai total manual ditolak.
 
-## Inventory Strategy
+## Allocation Integration
 
-Dipilih strategi hybrid ledger-derived.
+- BAP hanya dapat memakai allocation yang telah `accepted` atau `completed` dan milik Loket pembuat.
+- Range BAP dapat melintasi allocation berurutan untuk Loket yang sama.
+- Allocation yang seluruh range-nya telah terpakai ditandai `completed`; allocation yang kembali tersisa tetap `accepted`.
 
-- Tidak ada kolom `stock` mutable.
-- Stok tersedia pusat dihitung dari total Box dikurangi allocation pending dan allocation administratif aktif.
-- Stok fisik pusat dihitung dari total Box dikurangi allocation `accepted`/`completed`; allocation pending tetap fisik di pusat tetapi telah direservasi.
-- Kepemilikan administratif adalah `SkpdAllocation.loket_id` setelah accepted, sedangkan lokasi fisik sisa yang belum dialokasikan berasal dari `SkpdBox.central_storage_location`.
-- Pemakaian dihitung dari segment BAP. Sisa allocation adalah quantity allocation dikurangi segment pemakaian.
+## Inventory Integration
 
-## Allocation Strategy
+- `skpd_inventory_locks.id = 1` dikunci sebelum mutasi BAP dan segment ledger.
+- `CreateBap`, `UpdateBap`, dan `SubmitBap` memakai `DB::transaction(..., attempts: 3)`.
+- Tidak ada migration, redesign schema, atau field persediaan mutable baru pada Phase 06.
 
-Allocation menyatukan distribution dan digital handover:
+## Authorization
 
-- `pending`: range direservasi tetapi belum menjadi stok aktif Loket.
-- `accepted`: Loket tujuan menerima handover digital.
-- `completed`: seluruh range allocation telah digunakan dalam BAP.
-- `cancelled`: hanya allocation pending yang dapat dibatalkan oleh pembuatnya; range dapat dialokasikan kembali ke Loket yang sama sesuai aturan ownership.
+- Gate `view-baps`, `view-all-baps`, `view-bap`, `create-bap`, `update-bap`, dan `submit-bap` melindungi route dan controller.
+- Petugas Loket hanya dapat melihat dan memutasi BAP scope Loket sendiri; update/submit juga mengharuskan ia creator dan BAP masih draft.
+- Role pengawasan dapat membaca sesuai scope; Superadmin tetap read-only untuk mutasi BAP.
+- `loket_id`, `status`, dan `total_usage` dari request eksplisit dilarang untuk mencegah pemalsuan input frontend.
 
-## State Model
+## Audit
 
-- Box memakai status terhitung, bukan kolom mutable: `available`, `partially_allocated`, `fully_allocated`, dan `depleted`. Penerimaan Box dicatat sebagai event audit, bukan state yang mudah tersinkronisasi secara salah.
-- Allocation: `pending → accepted → completed`, atau `pending → cancelled`.
-- BAP: `draft → submitted`; enum `waiting_verification` sudah disiapkan untuk Phase 05. Workflow verifikasi/approval lanjutan tidak diimplementasikan pada fase ini.
+- Audit mencatat `bap.created`, `bap.updated`, `bap.submitted`, serta event perubahan `bap_usage_segments`.
+- Detail BAP menampilkan riwayat audit relevan bersama actor dan waktu kejadian.
+- Event baru tidak menyimpan password, secret, token, maupun credential.
 
-## Database Strategy
+## UI/UX
 
-- Schema memakai tipe integer unsigned untuk nomeratur dan quantity, date/datetime untuk waktu bisnis, `utf8mb4`/strict mode dari konfigurasi MySQL existing, dan string-backed enum agar state mudah diperluas tanpa migrasi native enum.
-- Foreign key menggunakan `restrictOnDelete` untuk menjaga riwayat domain; `accepted_by` memakai `nullOnDelete` agar riwayat handover tidak memblokir penghapusan user legacy.
-- MySQL menambahkan `CHECK` untuk urutan range, formula quantity, batas online usage, dan nilai state/reason. SQLite development tetap dilindungi oleh action domain karena SQLite tidak menerima `ALTER TABLE ... ADD CONSTRAINT` yang sama.
-- `DB_CONNECTION=sqlite` dan seluruh konfigurasi infrastructure tidak diubah. Enam migrasi Phase 04 telah dijalankan sukses pada `database/database.sqlite` tanpa menghapus data Phase 03.
+- Halaman BAP tersedia di `/baps`, `/baps/create`, `/baps/{bap}`, dan `/baps/{bap}/edit`.
+- Daftar menyediakan pencarian/filter dan tabel yang dapat di-scroll lokal pada layar sempit.
+- Form menampilkan preview total, Online, non-Online, range allocation aktif, dan ringkasan sebelum submit.
+- Dialog submit meminta konfirmasi dan menampilkan ringkasan BAP sebelum state berubah.
+- Dashboard menggunakan metrik BAP hari ini, antrean kerja, dan BAP terbaru dari data aktual; data placeholder BAP dihapus.
 
-## Migration
+## Route
 
-- `2026_08_30_093712_create_skpd_inventory_locks_table`
-- `2026_08_30_093713_create_skpd_boxes_table`
-- `2026_08_30_093715_create_skpd_allocations_table`
-- `2026_08_30_093716_create_baps_table`
-- `2026_08_30_093718_create_bap_usage_segments_table`
-- `2026_08_30_093719_create_bap_cancellations_table`
+- `GET baps` — daftar BAP sesuai scope.
+- `GET|POST baps/create` — form dan pembuatan draft BAP.
+- `GET baps/{bap}` — detail BAP.
+- `GET|PUT baps/{bap}/edit` — edit draft BAP milik creator.
+- `POST baps/{bap}/submit` — submit draft BAP.
+- Wayfinder digenerate ulang dengan form variants setelah route/controller ditambahkan.
 
-## Model Eloquent
+## Action / Domain Layer
 
-Model Eloquent baru memakai typed relationship, casts enum/tanggal, mass-assignment allow-list, dan relasi audit polimorfik. User dan Loket diperluas hanya dengan relationship domain; tidak ada perubahan perilaku autentikasi atau otorisasi Phase 03.
+- `CreateBap` menambah validasi tanggal berurutan dan audit segment saat draft dibuat.
+- `UpdateBap` mengunci ledger, membangun ulang segment dari range valid, memulihkan status allocation terdampak, dan menjaga urutan BAP berikutnya.
+- `SubmitBap` mempertahankan transaksi dan lock sebelum mengubah draft menjadi submitted.
+- Controller hanya menangani projection Inertia, authorization, dan delegasi Action.
 
-## Factory dan Seeder
+## Database
 
-- Factory ditambahkan untuk `SkpdBox`, `SkpdAllocation`, dan `Bap` untuk data test/development.
-- Tidak ada seeder domain baru agar tidak membuat data yang dapat disalahartikan sebagai stok produksi.
-- Role dan Loket existing tetap dipakai; tidak ada perubahan seed role.
-
-## Index dan Constraint
-
-- Unique: nomor Box, kombinasi `loket_id + service_date` BAP, batas awal/akhir BAP, dan nomeratur cancellation.
-- Index: range Box, Box/status allocation, Loket/status allocation, range allocation, Loket/akhir BAP, status/tanggal BAP, serta range segment pemakaian.
-- Foreign key: seluruh relasi Box, Loket, User, BAP, dan segment.
-- Database membantu validasi bentuk data; overlap interval, satu-Loket-per-Box, coverage BAP, dan sequence tetap berada di application layer karena constraint interval portable tidak tersedia sebagai unique index biasa.
-
-## Concurrency Strategy
-
-Semua operasi tulis domain memakai `DB::transaction(..., attempts: 3)` lalu `lockForUpdate()` terhadap row tunggal `skpd_inventory_locks.id = 1`. Setelah lock diperoleh, action juga mengunci row Box, Allocation, atau BAP yang relevan sebelum memeriksa dan menyimpan data. Strategi ini menserialisasi register Box, allocation, handover, pembuatan BAP, cancellation, dan submission sehingga hanya satu transaksi yang dapat memakai range/urutan yang sama.
+- Schema BAP dan `bap_usage_segments` Foundation Phase 04 dipakai tanpa perubahan.
+- Constraint unik `(loket_id, service_date)`, `numerator_start`, dan `numerator_end` menjadi pertahanan database tambahan atas rule aplikasi.
+- Development/test menggunakan SQLite; target MySQL belum tersedia untuk pengujian integrasi langsung.
 
 ## Testing
 
-PASS — `php artisan test --compact`: 59 test, 237 assertion.
+### Feature Test
 
-Coverage `SkpdInventoryTest` mencakup range Box valid/invalid/duplicate/overlap/gap, partial allocation, ownership satu Loket, range di luar Box, overlap allocation, handover pending/accepted/cancelled, BAP lintas allocation kontigu, formula total, online inclusive, BAP per hari, zero-usage day, sequence jump, BAP di luar allocation, cancellation valid/invalid/duplicate/reuse, dan state BAP submission.
+PASS — `php artisan test --compact`: 81 test, 444 assertion.
 
-PASS — `vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress` tanpa error.
+`BapWorkflowTest` mencakup create multiallocation, payload terlarang, allocation wajib, format/props range, BAP tunggal per Loket/tanggal, range tidak valid, urutan nomeratur, isolasi akses Loket, update draft, submit, dashboard aktual, dan constraint unik database. Regression Phase 03–05 juga lulus pada suite penuh.
+
+### npm run check
+
+PASS — tanpa warning atau lint error.
+
+### npm run types:check
+
+PASS — `tsc --noEmit`.
+
+### npm run build
+
+PASS — Vite production build berhasil.
+
+### PHPStan
+
+PASS — tanpa error.
+
+### Pint
 
 PASS — `vendor/bin/pint --dirty --format agent`.
 
-`npm run check` dan `npm run types:check` tidak dijalankan karena tidak ada perubahan frontend.
+### git diff --check
 
-## File yang Ditambahkan
-
-- Enum domain: `app/SkpdBoxStatus.php`, `app/SkpdAllocationStatus.php`, `app/BapStatus.php`, `app/BapCancellationReason.php`
-- Action domain: `app/Actions/SkpdInventory/`
-- Model: `app/Models/SkpdBox.php`, `SkpdAllocation.php`, `Bap.php`, `BapUsageSegment.php`, `BapCancellation.php`
-- Factory: `database/factories/SkpdBoxFactory.php`, `SkpdAllocationFactory.php`, `BapFactory.php`
-- Enam migration Phase 04 pada `database/migrations/`
-- Test: `tests/Feature/SkpdInventoryTest.php`
-- Rule durable: `.ai/rules/skpd-inventory.md`
-
-## File yang Diubah
-
-- `PROJECT_STATUS.md`
-- `app/Models/AuditLog.php`
-- `app/Models/User.php`
-- `app/Models/Loket.php`
-- `.ai/rules/index.md`
-
-## File yang Dihapus
-
-Tidak ada.
-
-## Dependency
-
-Tidak ada dependency yang ditambah atau dihapus.
-
-## Konfigurasi
-
-Tidak ada konfigurasi environment, database connection, authentication, Fortify, atau frontend yang diubah.
+PASS — tanpa whitespace error.
 
 ## Known Issues
 
-- Tidak ada server MySQL target yang dikonfigurasi pada workspace ini, sehingga DDL MySQL dan locking paralel belum diuji langsung terhadap server target. Migrasi dan seluruh test berjalan pada SQLite development/test database.
-- Tidak ada browser E2E karena Phase 04 tidak membuat UI bisnis dan plugin browser tidak tersedia.
+- MySQL target belum tersedia, sehingga contention lock paralel dan DDL belum divalidasi lewat integration test MySQL.
+- Browser E2E/visual automation tidak tersedia. Validasi lint, TypeScript, build, dan test aplikasi lulus; review visual desktop/mobile/light/dark tetap diperlukan sebelum release.
 
 ## Technical Debt
 
-- `waiting_verification`, verification berjenjang, clarification, finalisasi Bendahara Barang, dan bulk sign-off belum diimplementasikan; hanya state foundation yang tersedia.
-- Pemisahan reporting antara SIGNAL dan PRO NTT belum dimodelkan karena kebutuhan pelaporan belum diputuskan. Saat ini hanya total `online_usage_count` yang inklusif.
-- Master alasan batal/rusak belum dibuat; reason saat ini enum `cancelled` atau `damaged` dengan description opsional.
-- Validasi konkurensi nyata pada MySQL perlu dijalankan di environment target sebelum deployment.
+- Aggregate dashboard BAP dibaca langsung dari ledger dan belum memakai cache karena tidak ada kebutuhan konsistensi cache yang disetujui pada fase ini.
+- Detail audit menampilkan event BAP relevan; halaman audit log lintas domain belum menjadi scope.
 
 ## Open Questions
 
-- Apakah SIGNAL dan PRO NTT harus disimpan sebagai channel terpisah untuk laporan?
-- Apakah alasan batal/rusak harus menjadi master data yang dikelola Superadmin?
-- Siapa yang berwenang membatalkan allocation pending selain pembuatnya, dan apakah allocation accepted dapat ditarik kembali melalui workflow khusus?
-- Bagaimana kebijakan jika Box fisik resmi diterima dengan gap nomeratur yang membutuhkan justifikasi?
+- Apakah BAP membutuhkan nomor dokumen formal terpisah dari ID sistem sebelum pencetakan atau pelaporan resmi?
+- Apakah SIGNAL dan PRO NTT harus dipisahkan sebagai channel pelaporan?
+- Bagaimana state, otorisasi, reason master, dan dampak ledger untuk BAP Batal/Rusak?
+- Siapa role dan aturan klarifikasi/approval pada Phase 07?
 
 ## Keputusan Teknis
 
-- Nomeratur disimpan sebagai integer dan diformat 7 digit saat presentasi.
-- Range/ledger dipilih di atas record nomeratur individual.
-- Distribution digabung ke allocation untuk satu sumber lifecycle dan audit.
-- BAP dapat memiliki beberapa usage segment agar pemakaian lintas allocation kontigu tetap akurat.
-- Inventory dihitung dari ledger, bukan kolom stok mutable.
-- Lock transaksi global yang kecil digunakan untuk menjaga operasi interval yang tidak dapat ditutup oleh unique index biasa.
-- AuditLog Phase 03 dipakai ulang melalui relasi polimorfik.
+- Segment ledger menjadi satu-satunya sumber pemakaian BAP dan allocation; total selalu derived.
+- Lock global dan transaction Phase 04 dipakai ulang untuk seluruh mutasi BAP.
+- Range draft tidak boleh diubah setelah ada BAP lebih baru pada Loket yang sama.
+- Frontend memakai Wayfinder untuk link dan Form controller; URL mutasi tidak di-hardcode.
 
 ## Keputusan Bisnis
 
-- Satu nomeratur adalah satu set SKPD lima lembar.
-- Satu Box tidak boleh dibagi ke beberapa Loket; partial allocation hanya boleh kepada Loket yang sama.
-- Allocation pending bukan persediaan aktif Loket.
-- Satu BAP hanya untuk satu Loket dan satu hari pelayanan; hari zero usage tidak menghasilkan BAP.
-- Nomeratur batal/rusak tetap dikonsumsi dan tidak dapat digunakan ulang.
-- SKPD online adalah bagian dari total pemakaian, bukan tambahan total.
+- BAP submitted dipresentasikan `Menunggu verifikasi`, tetapi tidak dilakukan proses verifikasi pada Phase 06.
+- Petugas Loket hanya beroperasi pada Loket yang ditugaskan; role pengawasan bersifat read-only untuk BAP.
+- Online selalu bagian dari total pemakaian, bukan counter tambahan di luar range.
 
-## Handoff ke Phase 05
+## Perubahan Domain
 
-- Bangun route, policy, request validation, dan UI inventory/BAP di atas action `app/Actions/SkpdInventory/`; jangan menulis mutation langsung ke model.
-- Pertahankan urutan lock `skpd_inventory_locks` sebelum lock entity domain saat menambah action baru.
-- Gunakan `BapUsageSegment` untuk setiap perubahan yang perlu menghitung stok terpakai/sisa berdasarkan BAP.
-- Implementasikan transisi `submitted → waiting_verification` dan workflow verifikasi berikutnya secara eksplisit, disertai policy dan audit baru.
-- Jangan mengaktifkan kembali public registration, reset password email, email verification, passkey, atau 2FA tanpa keputusan bisnis dan test terpisah.
+- Menambah Action `UpdateBap`, Form Request BAP, Gate, controller, route, Inertia projection, komponen BAP, dan feature test.
+- Memperketat `CreateBap` dengan tanggal berurutan dan audit usage segment.
+- Tidak mengubah migration, enum BAP, atau kontrak range-ledger Phase 04.
+
+## Batasan Phase Berikutnya
+
+- Jangan menambahkan BAP Batal/Rusak, verifikasi, klarifikasi, finalisasi, reporting, PDF, atau nomor BAP formal tanpa keputusan bisnis tertulis.
+- Jangan mengganti ledger dengan field stock mutable atau melonggarkan global lock.
+- Perubahan lifecycle allocation accepted/completed harus mempertahankan audit dan dampak segment BAP.
+
+## Handoff ke Phase 07
+
+- Gunakan BAP `submitted` sebagai antrean awal `Menunggu verifikasi`.
+- Pertahankan scope Loket, transaction lock, unique constraint, dan segment ledger saat mendesain verifikasi/klarifikasi.
+- Putuskan terlebih dahulu role approver, state transition, reason code, serta konsekuensi BAP Batal/Rusak sebelum implementasi Phase 07.

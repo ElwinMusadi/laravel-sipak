@@ -1,0 +1,289 @@
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, History, Pencil } from 'lucide-react';
+import {
+    BapStatusBadge,
+    type BapStatus,
+} from '@/components/bap/bap-status-badge';
+import { BapSubmitDialog } from '@/components/bap/bap-submit-dialog';
+import {
+    formatDate,
+    formatDateTime,
+    formatNomeratur,
+    formatQuantity,
+    formatRange,
+} from '@/components/inventory/format';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { edit, index } from '@/routes/baps';
+
+type Props = {
+    bap: {
+        id: number;
+        service_date: string;
+        loket: { id: number; name: string };
+        numerator_start: number;
+        numerator_end: number;
+        total_usage: number;
+        online_usage_count: number;
+        non_online_usage_count: number;
+        status: BapStatus;
+        created_by: string;
+        created_at: string;
+        submitted_at: string | null;
+        can: { edit: boolean; submit: boolean };
+        segments: {
+            id: number;
+            allocation_id: number;
+            box_number: string;
+            numerator_start: number;
+            numerator_end: number;
+            quantity: number;
+        }[];
+        timeline: {
+            id: number;
+            event: string;
+            actor: string;
+            created_at: string;
+        }[];
+    };
+};
+
+export default function ShowBap({ bap }: Props) {
+    return (
+        <>
+            <Head title={`BAP Pemakaian #${bap.id}`} />
+
+            <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                    <div className="space-y-2">
+                        <Button variant="ghost" size="sm" asChild>
+                            <Link href={index()}>
+                                <ArrowLeft />
+                                Kembali ke BAP
+                            </Link>
+                        </Button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="text-2xl font-semibold tracking-tight">
+                                BAP Pemakaian #{bap.id}
+                            </h1>
+                            <BapStatusBadge status={bap.status} />
+                        </div>
+                        <p className="text-muted-foreground font-mono text-sm">
+                            {formatRange(
+                                bap.numerator_start,
+                                bap.numerator_end,
+                            )}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {bap.can.edit ? (
+                            <Button variant="outline" asChild>
+                                <Link href={edit(bap.id)}>
+                                    <Pencil />
+                                    Ubah draft
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {bap.can.submit ? <BapSubmitDialog bap={bap} /> : null}
+                    </div>
+                </div>
+
+                {bap.status !== 'draft' ? (
+                    <p className="border-primary/25 bg-primary/8 rounded-xl border p-4 text-sm">
+                        BAP ini telah diajukan dan bersifat read-only. Tahap
+                        verifikasi belum diimplementasikan pada Phase 06.
+                    </p>
+                ) : (
+                    <p className="text-muted-foreground rounded-xl border p-4 text-sm">
+                        Periksa detail pemakaian berikut sebelum mengajukan BAP.
+                        Setelah diajukan, data tidak dapat diubah bebas.
+                    </p>
+                )}
+
+                <section className="grid gap-4 lg:grid-cols-3">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Informasi BAP</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 text-sm">
+                            <DetailRow label="ID BAP" value={`#${bap.id}`} />
+                            <DetailRow
+                                label="Status"
+                                value={<BapStatusBadge status={bap.status} />}
+                            />
+                            <DetailRow
+                                label="Dibuat oleh"
+                                value={bap.created_by}
+                            />
+                            <DetailRow
+                                label="Dibuat pada"
+                                value={formatDateTime(bap.created_at)}
+                            />
+                            <DetailRow
+                                label="Waktu submit"
+                                value={
+                                    bap.submitted_at
+                                        ? formatDateTime(bap.submitted_at)
+                                        : 'Belum diajukan'
+                                }
+                            />
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Loket dan tanggal</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 text-sm">
+                            <DetailRow label="Loket" value={bap.loket.name} />
+                            <DetailRow
+                                label="Tanggal pelayanan"
+                                value={formatDate(bap.service_date)}
+                            />
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Pemakaian</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 text-sm">
+                            <DetailRow
+                                label="Nomeratur awal"
+                                value={formatNomeratur(bap.numerator_start)}
+                                mono
+                            />
+                            <DetailRow
+                                label="Nomeratur akhir"
+                                value={formatNomeratur(bap.numerator_end)}
+                                mono
+                            />
+                            <DetailRow
+                                label="Total pemakaian"
+                                value={`${formatQuantity(bap.total_usage)} set`}
+                            />
+                            <DetailRow
+                                label="Online"
+                                value={`${formatQuantity(bap.online_usage_count)} set`}
+                            />
+                            <DetailRow
+                                label="Non-online"
+                                value={`${formatQuantity(bap.non_online_usage_count)} set`}
+                            />
+                        </CardContent>
+                    </Card>
+                </section>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Usage segment</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[38rem] text-sm">
+                                <thead className="text-muted-foreground border-b text-left">
+                                    <tr>
+                                        <th className="px-2 py-3 font-medium">
+                                            Allocation
+                                        </th>
+                                        <th className="px-2 py-3 font-medium">
+                                            Box
+                                        </th>
+                                        <th className="px-2 py-3 font-medium">
+                                            Nomeratur
+                                        </th>
+                                        <th className="px-2 py-3 text-right font-medium">
+                                            Quantity
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {bap.segments.map((segment) => (
+                                        <tr key={segment.id}>
+                                            <td className="px-2 py-3 tabular-nums">
+                                                #{segment.allocation_id}
+                                            </td>
+                                            <td className="px-2 py-3 font-medium">
+                                                {segment.box_number}
+                                            </td>
+                                            <td className="px-2 py-3 font-mono text-xs whitespace-nowrap">
+                                                {formatRange(
+                                                    segment.numerator_start,
+                                                    segment.numerator_end,
+                                                )}
+                                            </td>
+                                            <td className="px-2 py-3 text-right tabular-nums">
+                                                {formatQuantity(
+                                                    segment.quantity,
+                                                )}{' '}
+                                                set
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex-row items-center gap-2">
+                        <History className="text-muted-foreground size-4" />
+                        <CardTitle>Riwayat singkat</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {bap.timeline.length === 0 ? (
+                            <p className="text-muted-foreground text-sm">
+                                Belum ada riwayat yang dapat ditampilkan.
+                            </p>
+                        ) : (
+                            <div className="space-y-4">
+                                {bap.timeline.map((entry, entryIndex) => (
+                                    <div key={entry.id}>
+                                        {entryIndex > 0 ? (
+                                            <Separator className="mb-4" />
+                                        ) : null}
+                                        <p className="font-medium">
+                                            {entry.event}
+                                        </p>
+                                        <p className="text-muted-foreground text-sm">
+                                            {entry.actor} ·{' '}
+                                            {formatDateTime(entry.created_at)}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </>
+    );
+}
+
+function DetailRow({
+    label,
+    value,
+    mono = false,
+}: {
+    label: string;
+    value: React.ReactNode;
+    mono?: boolean;
+}) {
+    return (
+        <div className="flex items-start justify-between gap-4">
+            <span className="text-muted-foreground">{label}</span>
+            <span
+                className={`text-right font-medium ${mono ? 'font-mono text-xs whitespace-nowrap' : ''}`}
+            >
+                {value}
+            </span>
+        </div>
+    );
+}
+
+ShowBap.layout = {
+    breadcrumbs: [
+        { title: 'BAP Pemakaian', href: index() },
+        { title: 'Detail BAP', href: index() },
+    ],
+};
