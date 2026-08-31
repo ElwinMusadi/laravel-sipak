@@ -24,6 +24,7 @@ import { index as bapVerificationsPhaseTwoIndex } from '@/routes/bap-verificatio
 import { index as bapClarificationsIndex } from '@/routes/bap-clarifications';
 import { index as bapAdministrationsIndex } from '@/routes/bap-administrations';
 import { index as bapsIndex } from '@/routes/baps';
+import { index as bukuKendaliIndex } from '@/routes/buku-kendali';
 import { index as usersIndex } from '@/routes/users';
 
 type NavigationHref = NonNullable<InertiaLinkProps['href']>;
@@ -35,7 +36,8 @@ export type ApplicationPermission =
     | 'viewBapVerificationsPhase1'
     | 'viewBapVerificationsPhase2'
     | 'viewBapClarifications'
-    | 'viewBapAdministrations';
+    | 'viewBapAdministrations'
+    | 'viewBukuKendali';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -109,7 +111,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'Buku Kendali',
                 icon: BookOpenCheck,
-                availability: 'planned',
+                href: bukuKendaliIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBukuKendali',
             },
         ],
     },

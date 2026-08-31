@@ -28,6 +28,7 @@ export type Auth = {
         viewBapVerificationsPhase2: boolean;
         viewBapClarifications: boolean;
         viewBapAdministrations: boolean;
+        viewBukuKendali: boolean;
     };
 };
 

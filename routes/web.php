@@ -8,6 +8,7 @@ use App\Http\Controllers\SkpdBapClarificationController;
 use App\Http\Controllers\SkpdBapController;
 use App\Http\Controllers\SkpdBapVerificationController;
 use App\Http\Controllers\SkpdBoxController;
+use App\Http\Controllers\SkpdBukuKendaliController;
 use App\Http\Controllers\SkpdInventoryController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,10 @@ Route::middleware(['auth', 'active'])->group(function () {
                 ->middleware('can:receive-bap-administratively,bap')
                 ->name('receive');
         });
+
+    Route::get('buku-kendali', [SkpdBukuKendaliController::class, 'index'])
+        ->middleware('can:view-buku-kendali')
+        ->name('buku-kendali.index');
 
     Route::middleware('can:view-bap-clarifications')
         ->prefix('bap-clarifications')
