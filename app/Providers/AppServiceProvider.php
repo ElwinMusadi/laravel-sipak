@@ -123,6 +123,13 @@ class AppServiceProvider extends ServiceProvider
             && $bap->status === BapStatus::Submitted);
 
         Gate::define('complete-bap-verification-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
+
+        Gate::define('view-bap-verifications-phase-2', fn (User $user): bool => $user->role === UserRole::PetugasVerifikasi);
+
+        Gate::define('start-bap-verification-phase-2', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasVerifikasi
+            && $bap->status === BapStatus::WaitingVerificationPhase2);
+
+        Gate::define('complete-bap-verification-phase-2', fn (User $user): bool => $user->role === UserRole::PetugasVerifikasi);
     }
 
     private function canViewBap(User $user, Bap $bap): bool

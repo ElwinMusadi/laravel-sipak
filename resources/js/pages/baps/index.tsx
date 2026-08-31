@@ -147,6 +147,12 @@ export default function BapIndex({ baps, filters, can }: Props) {
                   <SelectItem value="waiting_verification_phase_2">
                     Menunggu verifikasi Tahap 2
                   </SelectItem>
+                  <SelectItem value="under_verification_phase_2">
+                    Sedang diverifikasi Tahap 2
+                  </SelectItem>
+                  <SelectItem value="verified_phase_2">
+                    Lulus Verifikasi Tahap 2
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2">

@@ -33,7 +33,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { complete, index, start } from '@/routes/bap-verifications';
+import * as phaseOneRoutes from '@/routes/bap-verifications';
+import * as phaseTwoRoutes from '@/routes/bap-verifications-phase-2';
 
 type ChecklistType =
     | 'usage_quantity'
@@ -104,8 +105,15 @@ type Props = {
         }[];
     };
     verification: Verification | null;
+    phase_one_verification: Verification | null;
     checklist: ChecklistDefinition[];
     can: { start: boolean; complete: boolean };
+    verification_stage: {
+        value: 'phase_1' | 'phase_2';
+        label: string;
+        verifier_label: string;
+        is_phase_two: boolean;
+    };
 };
 
 type ChecklistInput = {
@@ -126,9 +134,12 @@ type VerificationForm = {
 export default function ShowBapVerification({
     bap,
     verification,
+    phase_one_verification: phaseOneVerification,
     checklist,
     can,
+    verification_stage: stage,
 }: Props) {
+    const routes = stage.is_phase_two ? phaseTwoRoutes : phaseOneRoutes;
     const [confirmationOpen, setConfirmationOpen] = useState(false);
     const [discrepancyNotes, setDiscrepancyNotes] = useState<
         Partial<Record<ChecklistType, string>>
@@ -184,14 +195,14 @@ export default function ShowBapVerification({
                 notes: discrepancyNotes[mismatch.type] ?? '',
             })),
         }));
-        form.post(complete(bap.id).url, {
+        form.post(routes.complete(bap.id).url, {
             onSuccess: () => setConfirmationOpen(false),
         });
     };
 
     return (
         <>
-            <Head title={`Verifikasi BAP #${bap.id}`} />
+            <Head title={`${stage.label} BAP #${bap.id}`} />
 
             <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
                 <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -202,14 +213,14 @@ export default function ShowBapVerification({
                             className="w-fit"
                             asChild
                         >
-                            <Link href={index()}>
+                            <Link href={routes.index()}>
                                 <ArrowLeft />
                                 Kembali ke antrean
                             </Link>
                         </Button>
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-semibold tracking-tight">
-                                Verifikasi BAP #{bap.id}
+                                {stage.label} BAP #{bap.id}
                             </h1>
                             <BapStatusBadge status={bap.status} />
                         </div>
@@ -220,12 +231,12 @@ export default function ShowBapVerification({
                     {can.start ? (
                         <Button asChild>
                             <Link
-                                href={start(bap.id)}
+                                href={routes.start(bap.id)}
                                 method="post"
                                 as="button"
                             >
                                 <Play />
-                                Mulai verifikasi
+                                Mulai {stage.label}
                             </Link>
                         </Button>
                     ) : null}
@@ -281,7 +292,7 @@ export default function ShowBapVerification({
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Status pemeriksaan</CardTitle>
+                            <CardTitle>Status {stage.label}</CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3 text-sm">
                             {verification ? (
@@ -298,7 +309,10 @@ export default function ShowBapVerification({
                                     />
                                     <DetailRow
                                         label="Hasil"
-                                        value={resultLabel(verification.result)}
+                                        value={resultLabel(
+                                            verification.result,
+                                            stage.label,
+                                        )}
                                     />
                                 </>
                             ) : (
@@ -417,8 +431,32 @@ export default function ShowBapVerification({
                     </Card>
                 </section>
 
+                {stage.is_phase_two ? (
+                    <section className="grid gap-4">
+                        <h2 className="text-lg font-semibold tracking-tight">
+                            Verifikasi Tahap 1
+                        </h2>
+                        {phaseOneVerification ? (
+                            <VerificationResult
+                                verification={phaseOneVerification}
+                                stageLabel="Verifikasi Tahap 1"
+                                isPhaseTwo={false}
+                            />
+                        ) : (
+                            <ValidationNotice>
+                                Hasil Verifikasi Tahap 1 tidak ditemukan. BAP
+                                ini tidak dapat diselesaikan pada Tahap 2.
+                            </ValidationNotice>
+                        )}
+                    </section>
+                ) : null}
+
                 {verification?.status === 'completed' ? (
-                    <VerificationResult verification={verification} />
+                    <VerificationResult
+                        verification={verification}
+                        stageLabel={stage.label}
+                        isPhaseTwo={stage.is_phase_two}
+                    />
                 ) : null}
 
                 {can.complete ? (
@@ -469,7 +507,7 @@ export default function ShowBapVerification({
 
                                 <fieldset className="grid gap-3 rounded-xl border p-4">
                                     <legend className="px-1 font-medium">
-                                        Hasil Verifikasi Tahap 1
+                                        Hasil {stage.label}
                                     </legend>
                                     <div className="flex flex-col gap-2 sm:flex-row">
                                         <Button
@@ -624,7 +662,7 @@ export default function ShowBapVerification({
                                         disabled={!canSubmit || form.processing}
                                     >
                                         <Send />
-                                        Selesaikan verifikasi
+                                        Selesaikan {stage.label}
                                     </Button>
                                 </div>
                             </form>
@@ -636,13 +674,12 @@ export default function ShowBapVerification({
             <Dialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>
-                            Selesaikan Verifikasi Tahap 1?
-                        </DialogTitle>
+                        <DialogTitle>Selesaikan {stage.label}?</DialogTitle>
                         <DialogDescription>
                             Pastikan seluruh pemeriksaan fisik telah dilakukan.
-                            Hasil lulus diteruskan ke antrean Verifikasi Tahap
-                            2, sedangkan selisih dikirim ke klarifikasi.
+                            {stage.is_phase_two
+                                ? 'Hasil lulus menyiapkan BAP untuk proses Bendahara Barang berikutnya, sedangkan selisih dikirim ke klarifikasi.'
+                                : 'Hasil lulus diteruskan ke antrean Verifikasi Tahap 2, sedangkan selisih dikirim ke klarifikasi.'}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter showCloseButton>
@@ -773,7 +810,15 @@ function ChecklistRow({
     );
 }
 
-function VerificationResult({ verification }: { verification: Verification }) {
+function VerificationResult({
+    verification,
+    stageLabel,
+    isPhaseTwo,
+}: {
+    verification: Verification;
+    stageLabel: string;
+    isPhaseTwo: boolean;
+}) {
     const passed = verification.result === 'passed';
 
     return (
@@ -788,15 +833,28 @@ function VerificationResult({ verification }: { verification: Verification }) {
                 <CardTitle className="flex flex-wrap items-center gap-2">
                     {passed ? <CheckCircle2 /> : <FileWarning />}
                     {passed
-                        ? 'Verifikasi Tahap 1 lulus'
-                        : 'Verifikasi Tahap 1 menemukan selisih'}
+                        ? `${stageLabel} lulus`
+                        : `${stageLabel} menemukan selisih`}
                 </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                    <DetailRow label="Verifier" value={verification.verifier} />
+                    <DetailRow
+                        label="Diselesaikan"
+                        value={
+                            verification.completed_at
+                                ? formatDateTime(verification.completed_at)
+                                : 'Belum selesai'
+                        }
+                    />
+                </div>
                 <p className="text-sm">
                     {passed
-                        ? 'BAP telah diteruskan ke antrean Verifikasi Tahap 2.'
-                        : 'BAP tetap perlu klarifikasi. Tidak ada alur klarifikasi dua arah atau verifikasi ulang pada Phase 08.'}
+                        ? isPhaseTwo
+                            ? 'BAP siap menjadi input proses Bendahara Barang berikutnya. Finalisasi dan pelaporan belum diimplementasikan.'
+                            : 'BAP telah diteruskan ke antrean Verifikasi Tahap 2.'
+                        : 'BAP tetap perlu klarifikasi. Tidak ada alur klarifikasi dua arah atau verifikasi ulang pada Phase 09.'}
                 </p>
                 {verification.notes ? (
                     <p className="text-muted-foreground bg-background/60 rounded-lg border p-3 text-sm whitespace-pre-wrap">
@@ -961,14 +1019,20 @@ function formatDifference(value: number | null): string {
     return `${value > 0 ? '+' : ''}${formatQuantity(value)}`;
 }
 
-function resultLabel(result: Verification['result']): string {
-    return matchResult(result);
+function resultLabel(
+    result: Verification['result'],
+    stageLabel: string,
+): string {
+    return matchResult(result, stageLabel);
 }
 
-function matchResult(result: Verification['result']): string {
+function matchResult(
+    result: Verification['result'],
+    stageLabel: string,
+): string {
     switch (result) {
         case 'passed':
-            return 'Lulus Verifikasi Tahap 1';
+            return `Lulus ${stageLabel}`;
         case 'discrepancy':
             return 'Ada Selisih';
         default:
@@ -978,7 +1042,7 @@ function matchResult(result: Verification['result']): string {
 
 ShowBapVerification.layout = {
     breadcrumbs: [
-        { title: 'Verifikasi Tahap 1', href: index() },
-        { title: 'Detail Verifikasi', href: index() },
+        { title: 'Antrean Verifikasi', href: phaseOneRoutes.index() },
+        { title: 'Detail Verifikasi', href: phaseOneRoutes.index() },
     ],
 };

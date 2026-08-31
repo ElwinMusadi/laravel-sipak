@@ -5,7 +5,9 @@ export type BapStatus =
     | 'submitted'
     | 'under_verification'
     | 'needs_clarification'
-    | 'waiting_verification_phase_2';
+    | 'waiting_verification_phase_2'
+    | 'under_verification_phase_2'
+    | 'verified_phase_2';
 
 const statusPresentation: Record<
     BapStatus,
@@ -29,6 +31,15 @@ const statusPresentation: Record<
     },
     waiting_verification_phase_2: {
         label: 'Menunggu Verifikasi Tahap 2',
+        className:
+            'border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    },
+    under_verification_phase_2: {
+        label: 'Sedang Diverifikasi Tahap 2',
+        className: 'border-primary/30 bg-primary/15 text-primary',
+    },
+    verified_phase_2: {
+        label: 'Lulus Verifikasi Tahap 2',
         className:
             'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
     },

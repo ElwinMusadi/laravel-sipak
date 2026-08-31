@@ -42,6 +42,12 @@ class DashboardController extends Controller
             ]);
         }
 
+        if ($actor->role === UserRole::PetugasVerifikasi) {
+            return Inertia::render('dashboard', [
+                'dashboard' => $this->phaseTwoDashboard($actor, $bapQuery, $todayCount),
+            ]);
+        }
+
         if ($actor->role === UserRole::PetugasLoket) {
             return Inertia::render('dashboard', [
                 'dashboard' => $this->loketDashboard($bapQuery, $todayCount),
@@ -187,6 +193,91 @@ class DashboardController extends Controller
      * @param  Builder<Bap>  $bapQuery
      * @return array<string, mixed>
      */
+    private function phaseTwoDashboard(User $actor, Builder $bapQuery, int $todayCount): array
+    {
+        $verificationQuery = BapVerification::query()
+            ->where('stage', BapVerificationStage::Phase2->value)
+            ->where('verifier_id', $actor->id);
+        $waitingCount = (clone $bapQuery)->where('status', BapStatus::WaitingVerificationPhase2->value)->count();
+        $inProgressCount = (clone $verificationQuery)
+            ->where('status', BapVerificationStatus::InProgress->value)
+            ->count();
+        $discrepancyCount = (clone $verificationQuery)
+            ->where('result', BapVerificationResult::Discrepancy->value)
+            ->count();
+        $completedCount = (clone $verificationQuery)
+            ->where('result', BapVerificationResult::Passed->value)
+            ->count();
+
+        return [
+            'metrics' => [
+                [
+                    'id' => 'today',
+                    'label' => 'BAP Hari Ini',
+                    'value' => $todayCount,
+                    'description' => 'BAP pada tanggal pelayanan hari ini',
+                ],
+                [
+                    'id' => 'waiting',
+                    'label' => 'Menunggu Verifikasi Tahap 2',
+                    'value' => $waitingCount,
+                    'description' => 'BAP yang lulus Verifikasi Tahap 1',
+                ],
+                [
+                    'id' => 'in_progress',
+                    'label' => 'Sedang Diverifikasi Tahap 2',
+                    'value' => $inProgressCount,
+                    'description' => 'Pemeriksaan fisik yang Anda mulai',
+                ],
+                [
+                    'id' => 'discrepancy',
+                    'label' => 'Ada Selisih',
+                    'value' => $discrepancyCount,
+                    'description' => 'Hasil Anda yang menunggu klarifikasi',
+                ],
+            ],
+            'workItems' => [
+                [
+                    'id' => 'waiting-phase-2',
+                    'title' => 'BAP menunggu Verifikasi Tahap 2',
+                    'count' => $waitingCount,
+                    'status' => 'waiting',
+                    'description' => 'Buka hasil Tahap 1 sebelum memulai pemeriksaan fisik.',
+                    'href' => route('bap-verifications-phase-2.index'),
+                ],
+                [
+                    'id' => 'in-progress-phase-2',
+                    'title' => 'Pemeriksaan fisik berlangsung',
+                    'count' => $inProgressCount,
+                    'status' => 'in_progress',
+                    'description' => 'Selesaikan checklist yang Anda mulai.',
+                    'href' => route('bap-verifications-phase-2.index'),
+                ],
+                [
+                    'id' => 'discrepancy-phase-2',
+                    'title' => 'Selisih yang telah dicatat',
+                    'count' => $discrepancyCount,
+                    'status' => 'discrepancy',
+                    'description' => 'Menunggu proses klarifikasi pada fase berikutnya.',
+                    'href' => route('baps.index', ['status' => BapStatus::NeedsClarification->value]),
+                ],
+                [
+                    'id' => 'completed-phase-2',
+                    'title' => 'Lulus Verifikasi Tahap 2',
+                    'count' => $completedCount,
+                    'status' => 'completed',
+                    'description' => 'BAP siap menjadi input proses Bendahara Barang berikutnya.',
+                    'href' => route('baps.index', ['status' => BapStatus::VerifiedPhase2->value]),
+                ],
+            ],
+            'recentBaps' => $this->recentBaps($bapQuery),
+        ];
+    }
+
+    /**
+     * @param  Builder<Bap>  $bapQuery
+     * @return array<string, mixed>
+     */
     private function loketDashboard(Builder $bapQuery, int $todayCount): array
     {
         $waitingCount = (clone $bapQuery)
@@ -270,6 +361,8 @@ class DashboardController extends Controller
             BapStatus::UnderVerification => 'in_progress',
             BapStatus::NeedsClarification => 'discrepancy',
             BapStatus::WaitingVerificationPhase2 => 'completed',
+            BapStatus::UnderVerificationPhase2 => 'in_progress',
+            BapStatus::VerifiedPhase2 => 'completed',
         };
     }
 }

@@ -59,6 +59,20 @@ Route::middleware(['auth', 'active'])->group(function () {
                 ->middleware('can:complete-bap-verification-phase-1')
                 ->name('complete');
         });
+
+    Route::middleware('can:view-bap-verifications-phase-2')
+        ->prefix('bap-verifications-phase-2')
+        ->name('bap-verifications-phase-2.')
+        ->group(function (): void {
+            Route::get('/', [SkpdBapVerificationController::class, 'indexPhase2'])->name('index');
+            Route::get('{bap}', [SkpdBapVerificationController::class, 'showPhase2'])->name('show');
+            Route::post('{bap}/start', [SkpdBapVerificationController::class, 'startPhase2'])
+                ->middleware('can:start-bap-verification-phase-2,bap')
+                ->name('start');
+            Route::post('{bap}/complete', [SkpdBapVerificationController::class, 'completePhase2'])
+                ->middleware('can:complete-bap-verification-phase-2')
+                ->name('complete');
+        });
 });
 
 Route::middleware(['auth', 'active', 'can:manage-users'])

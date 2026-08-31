@@ -19,6 +19,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as bapCancellationsIndex } from '@/routes/bap-cancellations';
 import { index as bapVerificationsIndex } from '@/routes/bap-verifications';
+import { index as bapVerificationsPhaseTwoIndex } from '@/routes/bap-verifications-phase-2';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
@@ -28,7 +29,8 @@ export type ApplicationPermission =
     | 'manageUsers'
     | 'viewBaps'
     | 'viewBapCancellations'
-    | 'viewBapVerificationsPhase1';
+    | 'viewBapVerificationsPhase1'
+    | 'viewBapVerificationsPhase2';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -122,7 +124,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'Verifikasi Tahap 2',
                 icon: BadgeCheck,
-                availability: 'planned',
+                href: bapVerificationsPhaseTwoIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBapVerificationsPhase2',
             },
             {
                 title: 'Approval Tahap 2',

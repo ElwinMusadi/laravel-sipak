@@ -15,7 +15,6 @@ use App\Models\BapVerification;
 use App\Models\BapVerificationChecklistItem;
 use App\Models\BapVerificationDiscrepancy;
 use App\Models\User;
-use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -37,24 +36,28 @@ class CompleteBapVerification
      *     discrepancies?: list<array{type: string, notes: string}>
      * }  $attributes
      */
-    public function handle(User $actor, Bap $bap, array $attributes): BapVerification
-    {
-        return DB::transaction(function () use ($actor, $bap, $attributes): BapVerification {
+    public function handle(
+        User $actor,
+        Bap $bap,
+        BapVerificationStage $stage,
+        array $attributes,
+    ): BapVerification {
+        return DB::transaction(function () use ($actor, $bap, $stage, $attributes): BapVerification {
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
             $verification = BapVerification::query()
                 ->where('bap_id', $lockedBap->id)
-                ->where('stage', BapVerificationStage::Phase1)
+                ->where('stage', $stage)
                 ->where('attempt', 1)
                 ->lockForUpdate()
                 ->first();
 
-            if ($actor->role !== UserRole::PetugasPenetapan || $verification?->verifier_id !== $actor->id) {
+            if ($actor->role !== $stage->verifierRole() || $verification?->verifier_id !== $actor->id) {
                 throw ValidationException::withMessages([
-                    'bap' => 'Hanya Petugas Penetapan yang memulai verifikasi ini yang dapat menyelesaikannya.',
+                    'bap' => "Hanya verifier {$stage->label()} yang memulai pemeriksaan ini dapat menyelesaikannya.",
                 ]);
             }
 
-            if ($lockedBap->status !== BapStatus::UnderVerification || $verification->status !== BapVerificationStatus::InProgress) {
+            if ($lockedBap->status !== $stage->inProgressBapStatus() || $verification->status !== BapVerificationStatus::InProgress) {
                 throw ValidationException::withMessages([
                     'status' => 'Verifikasi ini sudah tidak berada pada state yang dapat diselesaikan.',
                 ]);
@@ -82,18 +85,18 @@ class CompleteBapVerification
                 'completed_at' => now(),
             ]);
 
-            $this->audit->handle($actor, $lockedBap, 'bap_verification.phase_1_checklist_completed', null, [
+            $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_checklist_completed', null, [
                 'verification_id' => $verification->id,
                 'checklist_count' => count(BapVerificationChecklistType::cases()),
                 'result' => $result->value,
             ]);
 
             if ($result === BapVerificationResult::Passed) {
-                $lockedBap->transitionTo(BapStatus::WaitingVerificationPhase2);
+                $lockedBap->transitionTo($stage->passedBapStatus());
                 $lockedBap->save();
 
-                $this->audit->handle($actor, $lockedBap, 'bap_verification.phase_1_passed', [
-                    'status' => BapStatus::UnderVerification->value,
+                $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_passed', [
+                    'status' => $stage->inProgressBapStatus()->value,
                 ], [
                     'verification_id' => $verification->id,
                     'status' => $lockedBap->status->value,
@@ -122,19 +125,19 @@ class CompleteBapVerification
                     'notes' => filled($attributes['notes'] ?? null) ? trim((string) $attributes['notes']) : null,
                 ]);
 
-                $this->audit->handle($actor, $lockedBap, 'bap_verification.phase_1_discrepancy_recorded', [
-                    'status' => BapStatus::UnderVerification->value,
+                $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_discrepancy_recorded', [
+                    'status' => $stage->inProgressBapStatus()->value,
                 ], [
                     'verification_id' => $verification->id,
                     'discrepancy_count' => count($findings),
                 ]);
-                $this->audit->handle($actor, $lockedBap, 'bap_verification.phase_1_sent_to_clarification', null, [
+                $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_sent_to_clarification', null, [
                     'verification_id' => $verification->id,
                     'status' => $lockedBap->status->value,
                 ]);
             }
 
-            $this->audit->handle($actor, $lockedBap, 'bap_verification.phase_1_completed', null, [
+            $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_completed', null, [
                 'verification_id' => $verification->id,
                 'result' => $result->value,
                 'completed_at' => $verification->completed_at?->toISOString(),

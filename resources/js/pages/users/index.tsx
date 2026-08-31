@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -128,42 +135,54 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
                   placeholder="Cari username atau nama"
                 />
               </div>
-              <select
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter role"
+              <Select
+                value={role || "all"}
+                onValueChange={(val) => setRole(val === "all" ? "" : val)}
               >
-                <option value="">Semua role</option>
-                {roles.map((roleOption) => (
-                  <option key={roleOption.value} value={roleOption.value}>
-                    {roleOption.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter status"
+                <SelectTrigger aria-label="Filter role">
+                  <SelectValue placeholder="Semua role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua role</SelectItem>
+                  {roles.map((roleOption) => (
+                    <SelectItem key={roleOption.value} value={roleOption.value}>
+                      {roleOption.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={status || "all"}
+                onValueChange={(val) => setStatus(val === "all" ? "" : val)}
               >
-                <option value="">Semua status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Tidak aktif</option>
-              </select>
-              <select
-                value={loket}
-                onChange={(event) => setLoket(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter loket"
+                <SelectTrigger aria-label="Filter status">
+                  <SelectValue placeholder="Semua status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Tidak aktif</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={loket || "all"}
+                onValueChange={(val) => setLoket(val === "all" ? "" : val)}
               >
-                <option value="">Semua loket</option>
-                {lokets.map((loketOption) => (
-                  <option key={loketOption.id} value={loketOption.id}>
-                    {loketOption.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="Filter loket">
+                  <SelectValue placeholder="Semua loket" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua loket</SelectItem>
+                  {lokets.map((loketOption) => (
+                    <SelectItem
+                      key={loketOption.id.toString()}
+                      value={loketOption.id.toString()}
+                    >
+                      {loketOption.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="flex gap-2">
                 <Button type="submit">Terapkan</Button>
                 <Button

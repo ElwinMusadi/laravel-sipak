@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Actions\SkpdVerification\CompleteBapVerification;
 use App\Actions\SkpdVerification\StartBapVerification;
 use App\BapCancellationReason;
-use App\BapStatus;
 use App\BapVerificationChecklistType;
 use App\BapVerificationResult;
 use App\BapVerificationStage;
@@ -25,36 +24,92 @@ use Inertia\Response;
 
 class SkpdBapVerificationController extends Controller
 {
-    /**
-     * Display the queue of BAP records ready for Phase 1 verification.
-     */
     public function index(Request $request): Response
+    {
+        return $this->indexForStage($request, BapVerificationStage::Phase1);
+    }
+
+    public function indexPhase2(Request $request): Response
+    {
+        return $this->indexForStage($request, BapVerificationStage::Phase2);
+    }
+
+    public function show(Bap $bap, Request $request): Response
+    {
+        return $this->showForStage($bap, $request, BapVerificationStage::Phase1);
+    }
+
+    public function showPhase2(Bap $bap, Request $request): Response
+    {
+        return $this->showForStage($bap, $request, BapVerificationStage::Phase2);
+    }
+
+    public function start(Bap $bap, Request $request, StartBapVerification $startVerification): RedirectResponse
+    {
+        return $this->startForStage($bap, $request, $startVerification, BapVerificationStage::Phase1);
+    }
+
+    public function startPhase2(Bap $bap, Request $request, StartBapVerification $startVerification): RedirectResponse
+    {
+        return $this->startForStage($bap, $request, $startVerification, BapVerificationStage::Phase2);
+    }
+
+    public function complete(
+        CompleteBapVerificationRequest $request,
+        Bap $bap,
+        CompleteBapVerification $completeVerification,
+    ): RedirectResponse {
+        return $this->completeForStage($request, $bap, $completeVerification, BapVerificationStage::Phase1);
+    }
+
+    public function completePhase2(
+        CompleteBapVerificationRequest $request,
+        Bap $bap,
+        CompleteBapVerification $completeVerification,
+    ): RedirectResponse {
+        return $this->completeForStage($request, $bap, $completeVerification, BapVerificationStage::Phase2);
+    }
+
+    private function indexForStage(Request $request, BapVerificationStage $stage): Response
     {
         $this->actor($request);
 
-        Gate::authorize('view-bap-verifications-phase-1');
+        Gate::authorize($this->ability($stage, 'view'));
+
+        $stages = $stage === BapVerificationStage::Phase2
+            ? [BapVerificationStage::Phase1, BapVerificationStage::Phase2]
+            : [BapVerificationStage::Phase1];
 
         $baps = Bap::query()
             ->with([
                 'loket:id,name',
                 'creator:id,name',
-                'verifications' => function (Relation $query): void {
+                'verifications' => function (Relation $query) use ($stages): void {
                     $query
-                        ->where('stage', BapVerificationStage::Phase1->value)
+                        ->whereIn('stage', array_map(
+                            static fn (BapVerificationStage $verificationStage): string => $verificationStage->value,
+                            $stages,
+                        ))
                         ->with('verifier:id,name')
                         ->orderByDesc('attempt');
                 },
             ])
-            ->whereIn('status', [
-                BapStatus::Submitted->value,
-                BapStatus::UnderVerification->value,
-            ])
+            ->whereIn('status', $stage->queueBapStatuses())
+            ->when($stage === BapVerificationStage::Phase2, function ($query): void {
+                $query->whereHas('verifications', function ($verificationQuery): void {
+                    $verificationQuery
+                        ->where('stage', BapVerificationStage::Phase1)
+                        ->where('status', BapVerificationStatus::Completed)
+                        ->where('result', BapVerificationResult::Passed);
+                });
+            })
             ->orderBy('submitted_at')
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(function (Bap $bap): array {
-                $verification = $bap->verifications->first();
+            ->through(function (Bap $bap) use ($stage): array {
+                $verification = $this->verificationFromCollection($bap, $stage);
+                $phaseOneVerification = $this->verificationFromCollection($bap, BapVerificationStage::Phase1);
 
                 return [
                     'id' => $bap->id,
@@ -71,22 +126,25 @@ class SkpdBapVerificationController extends Controller
                         'verifier' => $verification->verifier->name,
                         'started_at' => $verification->started_at->toIso8601String(),
                     ],
+                    'phase_one_verification' => $phaseOneVerification === null ? null : [
+                        'verifier' => $phaseOneVerification->verifier->name,
+                        'result' => $phaseOneVerification->result?->value,
+                        'completed_at' => $phaseOneVerification->completed_at?->toIso8601String(),
+                    ],
                 ];
             });
 
         return Inertia::render('bap-verifications/index', [
             'baps' => $baps,
+            'verification_stage' => $this->stageData($stage),
         ]);
     }
 
-    /**
-     * Show one BAP with its immutable source data and Phase 1 verification state.
-     */
-    public function show(Bap $bap, Request $request): Response
+    private function showForStage(Bap $bap, Request $request, BapVerificationStage $stage): Response
     {
         $actor = $this->actor($request);
 
-        Gate::authorize('view-bap-verifications-phase-1');
+        Gate::authorize($this->ability($stage, 'view'));
 
         $bap->load([
             'loket:id,name',
@@ -102,7 +160,10 @@ class SkpdBapVerificationController extends Controller
                     ->orderBy('numerator');
             },
         ]);
-        $verification = $this->phaseOneVerification($bap);
+        $verification = $this->verificationForStage($bap, $stage);
+        $phaseOneVerification = $stage === BapVerificationStage::Phase2
+            ? $this->verificationForStage($bap, BapVerificationStage::Phase1)
+            : null;
 
         return Inertia::render('bap-verifications/show', [
             'bap' => [
@@ -142,58 +203,65 @@ class SkpdBapVerificationController extends Controller
                     ->values()
                     ->all(),
             ],
+            'verification_stage' => $this->stageData($stage),
             'verification' => $this->verificationData($verification),
+            'phase_one_verification' => $this->verificationData($phaseOneVerification),
             'checklist' => $this->checklistData($bap, $verification),
             'can' => [
-                'start' => $actor->can('start-bap-verification-phase-1', $bap),
-                'complete' => $actor->can('complete-bap-verification-phase-1')
+                'start' => $actor->can($this->ability($stage, 'start'), $bap),
+                'complete' => $actor->can($this->ability($stage, 'complete'))
                     && $verification?->status === BapVerificationStatus::InProgress
                     && $verification->verifier_id === $actor->id,
             ],
         ]);
     }
 
-    /**
-     * Claim a submitted BAP for one Petugas Penetapan.
-     */
-    public function start(Bap $bap, Request $request, StartBapVerification $startVerification): RedirectResponse
-    {
-        $startVerification->handle($this->actor($request), $bap);
+    private function startForStage(
+        Bap $bap,
+        Request $request,
+        StartBapVerification $startVerification,
+        BapVerificationStage $stage,
+    ): RedirectResponse {
+        $startVerification->handle($this->actor($request), $bap, $stage);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Verifikasi Tahap 1 dimulai. Catat hasil pemeriksaan fisik sebelum menyelesaikan verifikasi.']);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "{$stage->label()} dimulai. Catat hasil pemeriksaan fisik sebelum menyelesaikan verifikasi.",
+        ]);
 
-        return to_route('bap-verifications.show', $bap);
+        return to_route($this->routeName($stage, 'show'), $bap);
     }
 
-    /**
-     * Complete the active verification with a passed or discrepancy result.
-     */
-    public function complete(
+    private function completeForStage(
         CompleteBapVerificationRequest $request,
         Bap $bap,
         CompleteBapVerification $completeVerification,
+        BapVerificationStage $stage,
     ): RedirectResponse {
         $verification = $completeVerification->handle(
             $this->actor($request),
             $bap,
+            $stage,
             $request->verificationAttributes(),
         );
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => $verification->result === BapVerificationResult::Passed
-                ? 'Verifikasi Tahap 1 lulus dan BAP masuk antrean Verifikasi Tahap 2.'
+                ? $stage === BapVerificationStage::Phase1
+                    ? 'Verifikasi Tahap 1 lulus dan BAP masuk antrean Verifikasi Tahap 2.'
+                    : 'Verifikasi Tahap 2 lulus. BAP siap menjadi input proses Bendahara Barang berikutnya.'
                 : 'Selisih dicatat dan BAP dikirim ke kebutuhan klarifikasi.',
         ]);
 
-        return to_route('bap-verifications.show', $bap);
+        return to_route($this->routeName($stage, 'show'), $bap);
     }
 
-    private function phaseOneVerification(Bap $bap): ?BapVerification
+    private function verificationForStage(Bap $bap, BapVerificationStage $stage): ?BapVerification
     {
         return BapVerification::query()
             ->where('bap_id', $bap->id)
-            ->where('stage', BapVerificationStage::Phase1->value)
+            ->where('stage', $stage)
             ->with([
                 'verifier:id,name',
                 'checklistItems' => fn (Relation $query): Relation => $query->orderBy('type'),
@@ -202,6 +270,13 @@ class SkpdBapVerificationController extends Controller
             ])
             ->orderByDesc('attempt')
             ->first();
+    }
+
+    private function verificationFromCollection(Bap $bap, BapVerificationStage $stage): ?BapVerification
+    {
+        return $bap->verifications->first(
+            fn (BapVerification $verification): bool => $verification->stage === $stage,
+        );
     }
 
     /**
@@ -276,6 +351,19 @@ class SkpdBapVerificationController extends Controller
         }, BapVerificationChecklistType::cases());
     }
 
+    /**
+     * @return array{value: string, label: string, verifier_label: string, is_phase_two: bool}
+     */
+    private function stageData(BapVerificationStage $stage): array
+    {
+        return [
+            'value' => $stage->value,
+            'label' => $stage->label(),
+            'verifier_label' => $stage->verifierRole()->label(),
+            'is_phase_two' => $stage === BapVerificationStage::Phase2,
+        ];
+    }
+
     private function expectedQuantity(Bap $bap, BapVerificationChecklistType $type): int
     {
         return match ($type) {
@@ -284,6 +372,26 @@ class SkpdBapVerificationController extends Controller
             BapVerificationChecklistType::TindisanSets => $bap->total_usage,
             BapVerificationChecklistType::Cancellation => $bap->cancellations->count(),
             BapVerificationChecklistType::Online => $bap->online_usage_count,
+        };
+    }
+
+    private function ability(BapVerificationStage $stage, string $action): string
+    {
+        $prefix = $action === 'view'
+            ? 'view-bap-verifications'
+            : "{$action}-bap-verification";
+
+        return match ($stage) {
+            BapVerificationStage::Phase1 => "{$prefix}-phase-1",
+            BapVerificationStage::Phase2 => "{$prefix}-phase-2",
+        };
+    }
+
+    private function routeName(BapVerificationStage $stage, string $action): string
+    {
+        return match ($stage) {
+            BapVerificationStage::Phase1 => "bap-verifications.{$action}",
+            BapVerificationStage::Phase2 => "bap-verifications-phase-2.{$action}",
         };
     }
 
