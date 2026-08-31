@@ -121,7 +121,7 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
         </div>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <form
               onSubmit={applyFilters}
               className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_10rem_12rem_auto]"
@@ -139,7 +139,7 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
                 value={role || "all"}
                 onValueChange={(val) => setRole(val === "all" ? "" : val)}
               >
-                <SelectTrigger aria-label="Filter role">
+                <SelectTrigger className="w-full" aria-label="Filter role">
                   <SelectValue placeholder="Semua role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -155,7 +155,7 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
                 value={status || "all"}
                 onValueChange={(val) => setStatus(val === "all" ? "" : val)}
               >
-                <SelectTrigger aria-label="Filter status">
+                <SelectTrigger className="w-full" aria-label="Filter status">
                   <SelectValue placeholder="Semua status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -168,7 +168,7 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
                 value={loket || "all"}
                 onValueChange={(val) => setLoket(val === "all" ? "" : val)}
               >
-                <SelectTrigger aria-label="Filter loket">
+                <SelectTrigger className="w-full" aria-label="Filter loket">
                   <SelectValue placeholder="Semua loket" />
                 </SelectTrigger>
                 <SelectContent>

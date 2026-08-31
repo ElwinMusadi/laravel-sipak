@@ -31,10 +31,12 @@ enum BapVerificationStage: string
         return match ($this) {
             self::Phase1 => [
                 BapStatus::Submitted->value,
+                BapStatus::WaitingReverificationPhase1->value,
                 BapStatus::UnderVerification->value,
             ],
             self::Phase2 => [
                 BapStatus::WaitingVerificationPhase2->value,
+                BapStatus::WaitingReverificationPhase2->value,
                 BapStatus::UnderVerificationPhase2->value,
             ],
         };
@@ -46,6 +48,22 @@ enum BapVerificationStage: string
             self::Phase1 => BapStatus::Submitted,
             self::Phase2 => BapStatus::WaitingVerificationPhase2,
         };
+    }
+
+    /**
+     * @return list<BapStatus>
+     */
+    public function startBapStatuses(): array
+    {
+        return match ($this) {
+            self::Phase1 => [BapStatus::Submitted, BapStatus::WaitingReverificationPhase1],
+            self::Phase2 => [BapStatus::WaitingVerificationPhase2, BapStatus::WaitingReverificationPhase2],
+        };
+    }
+
+    public function canStartFrom(BapStatus $status): bool
+    {
+        return in_array($status, $this->startBapStatuses(), true);
     }
 
     public function inProgressBapStatus(): BapStatus
@@ -61,6 +79,14 @@ enum BapVerificationStage: string
         return match ($this) {
             self::Phase1 => BapStatus::WaitingVerificationPhase2,
             self::Phase2 => BapStatus::VerifiedPhase2,
+        };
+    }
+
+    public function reverificationBapStatus(): BapStatus
+    {
+        return match ($this) {
+            self::Phase1 => BapStatus::WaitingReverificationPhase1,
+            self::Phase2 => BapStatus::WaitingReverificationPhase2,
         };
     }
 

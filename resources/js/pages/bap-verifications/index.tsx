@@ -38,8 +38,10 @@ type QueueBap = {
         BapStatus,
         | 'submitted'
         | 'under_verification'
+        | 'waiting_reverification_phase_1'
         | 'waiting_verification_phase_2'
         | 'under_verification_phase_2'
+        | 'waiting_reverification_phase_2'
     >;
     created_by: string;
     submitted_at: string | null;
@@ -72,9 +74,9 @@ export default function BapVerificationIndex({
     verification_stage: stage,
 }: Props) {
     const routes = stage.is_phase_two ? phaseTwoRoutes : phaseOneRoutes;
-    const startStatus = stage.is_phase_two
-        ? 'waiting_verification_phase_2'
-        : 'submitted';
+    const startStatuses: QueueBap['status'][] = stage.is_phase_two
+        ? ['waiting_verification_phase_2', 'waiting_reverification_phase_2']
+        : ['submitted', 'waiting_reverification_phase_1'];
 
     return (
         <>
@@ -250,8 +252,9 @@ export default function BapVerificationIndex({
                                                 ) : null}
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        {bap.status ===
-                                                        startStatus ? (
+                                                        {startStatuses.includes(
+                                                            bap.status,
+                                                        ) ? (
                                                             <Button
                                                                 size="sm"
                                                                 onClick={() =>
@@ -263,7 +266,11 @@ export default function BapVerificationIndex({
                                                                 }
                                                             >
                                                                 <Play />
-                                                                Mulai
+                                                                {bap.status.startsWith(
+                                                                    'waiting_reverification',
+                                                                )
+                                                                    ? 'Mulai Ulang'
+                                                                    : 'Mulai'}
                                                             </Button>
                                                         ) : null}
                                                         <Button
@@ -277,8 +284,9 @@ export default function BapVerificationIndex({
                                                                 )}
                                                                 aria-label={`Detail verifikasi BAP #${bap.id}`}
                                                             >
-                                                                {bap.status ===
-                                                                startStatus ? (
+                                                                {startStatuses.includes(
+                                                                    bap.status,
+                                                                ) ? (
                                                                     <ArrowRight />
                                                                 ) : (
                                                                     <Eye />

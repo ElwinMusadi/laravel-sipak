@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Http\Requests\SkpdVerification;
+
+use App\BapClarificationResolutionOutcome;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class ReviewBapClarificationRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'outcome' => ['required', Rule::enum(BapClarificationResolutionOutcome::class)],
+            'notes' => ['required', 'string', 'max:2000'],
+            'status' => ['prohibited'],
+            'response' => ['prohibited'],
+            'expected_value' => ['prohibited'],
+            'actual_value' => ['prohibited'],
+            'difference' => ['prohibited'],
+        ];
+    }
+}

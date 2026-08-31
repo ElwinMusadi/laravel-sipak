@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\BapClarificationStatus;
 use App\BapStatus;
 use App\BapVerificationResult;
 use App\BapVerificationStage;
 use App\BapVerificationStatus;
 use App\Models\Bap;
+use App\Models\BapClarificationRequest;
 use App\Models\BapVerification;
 use App\Models\User;
 use App\UserRole;
@@ -50,7 +52,7 @@ class DashboardController extends Controller
 
         if ($actor->role === UserRole::PetugasLoket) {
             return Inertia::render('dashboard', [
-                'dashboard' => $this->loketDashboard($bapQuery, $todayCount),
+                'dashboard' => $this->loketDashboard($actor, $bapQuery, $todayCount),
             ]);
         }
 
@@ -113,12 +115,18 @@ class DashboardController extends Controller
         $verificationQuery = BapVerification::query()
             ->where('stage', BapVerificationStage::Phase1->value)
             ->where('verifier_id', $actor->id);
-        $waitingCount = (clone $bapQuery)->where('status', BapStatus::Submitted->value)->count();
+        $waitingCount = (clone $bapQuery)
+            ->whereIn('status', [BapStatus::Submitted->value, BapStatus::WaitingReverificationPhase1->value])
+            ->count();
+        $reverificationCount = (clone $bapQuery)
+            ->where('status', BapStatus::WaitingReverificationPhase1->value)
+            ->count();
+        $clarificationReviewCount = BapClarificationRequest::query()
+            ->where('status', BapClarificationStatus::Responded)
+            ->whereHas('verification', fn (Builder $query): Builder => $query->where('stage', BapVerificationStage::Phase1))
+            ->count();
         $inProgressCount = (clone $verificationQuery)
             ->where('status', BapVerificationStatus::InProgress->value)
-            ->count();
-        $discrepancyCount = (clone $verificationQuery)
-            ->where('result', BapVerificationResult::Discrepancy->value)
             ->count();
         $completedCount = (clone $verificationQuery)
             ->where('result', BapVerificationResult::Passed->value)
@@ -146,9 +154,9 @@ class DashboardController extends Controller
                 ],
                 [
                     'id' => 'discrepancy',
-                    'label' => 'Ada Selisih',
-                    'value' => $discrepancyCount,
-                    'description' => 'Hasil Anda yang menunggu klarifikasi',
+                    'label' => 'Klarifikasi Menunggu Review',
+                    'value' => $clarificationReviewCount,
+                    'description' => 'Tanggapan Loket untuk selisih Tahap 1',
                 ],
             ],
             'workItems' => [
@@ -169,12 +177,20 @@ class DashboardController extends Controller
                     'href' => route('bap-verifications.index'),
                 ],
                 [
-                    'id' => 'discrepancy-phase-1',
-                    'title' => 'Selisih yang telah dicatat',
-                    'count' => $discrepancyCount,
+                    'id' => 'clarification-review-phase-1',
+                    'title' => 'Klarifikasi Tahap 1 menunggu review',
+                    'count' => $clarificationReviewCount,
                     'status' => 'discrepancy',
-                    'description' => 'Menunggu proses klarifikasi pada fase berikutnya.',
-                    'href' => route('baps.index', ['status' => BapStatus::NeedsClarification->value]),
+                    'description' => 'Tinjau tanggapan Loket tanpa mengubah finding asli.',
+                    'href' => route('bap-clarifications.index'),
+                ],
+                [
+                    'id' => 'reverification-phase-1',
+                    'title' => 'Verifikasi ulang Tahap 1',
+                    'count' => $reverificationCount,
+                    'status' => 'waiting',
+                    'description' => 'Klarifikasi selesai dan siap diperiksa ulang.',
+                    'href' => route('bap-verifications.index'),
                 ],
                 [
                     'id' => 'completed-phase-1',
@@ -198,12 +214,18 @@ class DashboardController extends Controller
         $verificationQuery = BapVerification::query()
             ->where('stage', BapVerificationStage::Phase2->value)
             ->where('verifier_id', $actor->id);
-        $waitingCount = (clone $bapQuery)->where('status', BapStatus::WaitingVerificationPhase2->value)->count();
+        $waitingCount = (clone $bapQuery)
+            ->whereIn('status', [BapStatus::WaitingVerificationPhase2->value, BapStatus::WaitingReverificationPhase2->value])
+            ->count();
+        $reverificationCount = (clone $bapQuery)
+            ->where('status', BapStatus::WaitingReverificationPhase2->value)
+            ->count();
+        $clarificationReviewCount = BapClarificationRequest::query()
+            ->where('status', BapClarificationStatus::Responded)
+            ->whereHas('verification', fn (Builder $query): Builder => $query->where('stage', BapVerificationStage::Phase2))
+            ->count();
         $inProgressCount = (clone $verificationQuery)
             ->where('status', BapVerificationStatus::InProgress->value)
-            ->count();
-        $discrepancyCount = (clone $verificationQuery)
-            ->where('result', BapVerificationResult::Discrepancy->value)
             ->count();
         $completedCount = (clone $verificationQuery)
             ->where('result', BapVerificationResult::Passed->value)
@@ -231,9 +253,9 @@ class DashboardController extends Controller
                 ],
                 [
                     'id' => 'discrepancy',
-                    'label' => 'Ada Selisih',
-                    'value' => $discrepancyCount,
-                    'description' => 'Hasil Anda yang menunggu klarifikasi',
+                    'label' => 'Klarifikasi Menunggu Review',
+                    'value' => $clarificationReviewCount,
+                    'description' => 'Tanggapan Loket untuk selisih Tahap 2',
                 ],
             ],
             'workItems' => [
@@ -254,12 +276,20 @@ class DashboardController extends Controller
                     'href' => route('bap-verifications-phase-2.index'),
                 ],
                 [
-                    'id' => 'discrepancy-phase-2',
-                    'title' => 'Selisih yang telah dicatat',
-                    'count' => $discrepancyCount,
+                    'id' => 'clarification-review-phase-2',
+                    'title' => 'Klarifikasi Tahap 2 menunggu review',
+                    'count' => $clarificationReviewCount,
                     'status' => 'discrepancy',
-                    'description' => 'Menunggu proses klarifikasi pada fase berikutnya.',
-                    'href' => route('baps.index', ['status' => BapStatus::NeedsClarification->value]),
+                    'description' => 'Tinjau tanggapan Loket tanpa mengubah finding asli.',
+                    'href' => route('bap-clarifications.index'),
+                ],
+                [
+                    'id' => 'reverification-phase-2',
+                    'title' => 'Verifikasi ulang Tahap 2',
+                    'count' => $reverificationCount,
+                    'status' => 'waiting',
+                    'description' => 'Klarifikasi selesai dan siap diperiksa ulang.',
+                    'href' => route('bap-verifications-phase-2.index'),
                 ],
                 [
                     'id' => 'completed-phase-2',
@@ -278,13 +308,17 @@ class DashboardController extends Controller
      * @param  Builder<Bap>  $bapQuery
      * @return array<string, mixed>
      */
-    private function loketDashboard(Builder $bapQuery, int $todayCount): array
+    private function loketDashboard(User $actor, Builder $bapQuery, int $todayCount): array
     {
         $waitingCount = (clone $bapQuery)
             ->whereIn('status', [BapStatus::Submitted->value, BapStatus::UnderVerification->value])
             ->count();
-        $clarificationCount = (clone $bapQuery)
-            ->where('status', BapStatus::NeedsClarification->value)
+        $clarificationCount = BapClarificationRequest::query()
+            ->whereIn('status', [BapClarificationStatus::WaitingResponse, BapClarificationStatus::Reopened])
+            ->whereHas('bap', fn (Builder $query): Builder => $query->where('loket_id', $actor->loket_id))
+            ->count();
+        $reverificationCount = (clone $bapQuery)
+            ->whereIn('status', [BapStatus::WaitingReverificationPhase1->value, BapStatus::WaitingReverificationPhase2->value])
             ->count();
 
         return [
@@ -319,11 +353,19 @@ class DashboardController extends Controller
                 ],
                 [
                     'id' => 'clarification',
-                    'title' => 'BAP perlu tindak lanjut',
+                    'title' => 'Klarifikasi perlu ditanggapi',
                     'count' => $clarificationCount,
                     'status' => 'discrepancy',
-                    'description' => 'Detail selisih tersedia, alur klarifikasi lengkap belum dibangun.',
-                    'href' => route('baps.index', ['status' => BapStatus::NeedsClarification->value]),
+                    'description' => 'Berikan penjelasan tanpa mengubah data BAP atau selisih.',
+                    'href' => route('bap-clarifications.index'),
+                ],
+                [
+                    'id' => 'reverification',
+                    'title' => 'BAP menunggu verifikasi ulang',
+                    'count' => $reverificationCount,
+                    'status' => 'waiting',
+                    'description' => 'Penyelesaian klarifikasi telah diterima dan diperiksa ulang oleh verifier terkait.',
+                    'href' => route('baps.index'),
                 ],
             ],
             'recentBaps' => $this->recentBaps($bapQuery),
@@ -360,8 +402,10 @@ class DashboardController extends Controller
             BapStatus::Submitted => 'waiting',
             BapStatus::UnderVerification => 'in_progress',
             BapStatus::NeedsClarification => 'discrepancy',
+            BapStatus::WaitingReverificationPhase1 => 'waiting',
             BapStatus::WaitingVerificationPhase2 => 'completed',
             BapStatus::UnderVerificationPhase2 => 'in_progress',
+            BapStatus::WaitingReverificationPhase2 => 'waiting',
             BapStatus::VerifiedPhase2 => 'completed',
         };
     }

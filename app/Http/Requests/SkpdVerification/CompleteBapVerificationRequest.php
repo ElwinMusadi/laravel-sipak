@@ -97,6 +97,11 @@ class CompleteBapVerificationRequest extends FormRequest
                     $validator->errors()->add("checklist.{$index}.actual_quantity", 'Nilai fisik wajib diisi.');
                 }
             }
+
+            if ($this->input('result') === BapVerificationResult::Discrepancy->value
+                && blank($this->input('notes'))) {
+                $validator->errors()->add('notes', 'Permintaan klarifikasi dari verifier wajib diisi ketika ditemukan selisih.');
+            }
         }];
     }
 

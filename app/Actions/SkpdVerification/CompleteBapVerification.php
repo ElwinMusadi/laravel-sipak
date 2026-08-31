@@ -47,17 +47,24 @@ class CompleteBapVerification
             $verification = BapVerification::query()
                 ->where('bap_id', $lockedBap->id)
                 ->where('stage', $stage)
-                ->where('attempt', 1)
+                ->where('status', BapVerificationStatus::InProgress)
+                ->latest('attempt')
                 ->lockForUpdate()
                 ->first();
 
-            if ($actor->role !== $stage->verifierRole() || $verification?->verifier_id !== $actor->id) {
+            if ($verification === null || $lockedBap->status !== $stage->inProgressBapStatus()) {
+                throw ValidationException::withMessages([
+                    'status' => 'BAP tidak berada pada status verifikasi yang sedang berlangsung.',
+                ]);
+            }
+
+            if ($actor->role !== $stage->verifierRole() || $verification->verifier_id !== $actor->id) {
                 throw ValidationException::withMessages([
                     'bap' => "Hanya verifier {$stage->label()} yang memulai pemeriksaan ini dapat menyelesaikannya.",
                 ]);
             }
 
-            if ($lockedBap->status !== $stage->inProgressBapStatus() || $verification->status !== BapVerificationStatus::InProgress) {
+            if ($verification->status !== BapVerificationStatus::InProgress) {
                 throw ValidationException::withMessages([
                     'status' => 'Verifikasi ini sudah tidak berada pada state yang dapat diselesaikan.',
                 ]);
@@ -117,11 +124,11 @@ class CompleteBapVerification
                 $lockedBap->transitionTo(BapStatus::NeedsClarification);
                 $lockedBap->save();
 
-                BapClarificationRequest::create([
+                $clarification = BapClarificationRequest::create([
                     'bap_id' => $lockedBap->id,
                     'bap_verification_id' => $verification->id,
                     'requested_by' => $actor->id,
-                    'status' => BapClarificationStatus::Open,
+                    'status' => BapClarificationStatus::WaitingResponse,
                     'notes' => filled($attributes['notes'] ?? null) ? trim((string) $attributes['notes']) : null,
                 ]);
 
@@ -135,13 +142,30 @@ class CompleteBapVerification
                     'verification_id' => $verification->id,
                     'status' => $lockedBap->status->value,
                 ]);
+                $this->audit->handle($actor, $lockedBap, 'bap_clarification.requested', null, [
+                    'clarification_id' => $clarification->id,
+                    'verification_id' => $verification->id,
+                    'stage' => $stage->value,
+                    'status' => BapClarificationStatus::WaitingResponse->value,
+                ]);
             }
 
             $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_completed', null, [
                 'verification_id' => $verification->id,
+                'attempt' => $verification->attempt,
                 'result' => $result->value,
                 'completed_at' => $verification->completed_at?->toISOString(),
             ]);
+
+            if ($verification->attempt > 1) {
+                $this->audit->handle($actor, $lockedBap, 'bap_clarification.reverification_completed', null, [
+                    'verification_id' => $verification->id,
+                    'stage' => $stage->value,
+                    'attempt' => $verification->attempt,
+                    'result' => $result->value,
+                    'completed_at' => $verification->completed_at?->toISOString(),
+                ]);
+            }
 
             return $verification;
         }, attempts: 3);

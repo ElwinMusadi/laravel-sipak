@@ -108,7 +108,7 @@ export default function BapIndex({ baps, filters, can }: Props) {
           <CardContent>
             <form
               onSubmit={applyFilters}
-              className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_auto]"
+              className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_17rem_auto]"
             >
               <div className="relative">
                 <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -144,11 +144,17 @@ export default function BapIndex({ baps, filters, can }: Props) {
                   <SelectItem value="needs_clarification">
                     Perlu klarifikasi
                   </SelectItem>
+                  <SelectItem value="waiting_reverification_phase_1">
+                    Menunggu re-verifikasi Tahap 1
+                  </SelectItem>
                   <SelectItem value="waiting_verification_phase_2">
                     Menunggu verifikasi Tahap 2
                   </SelectItem>
                   <SelectItem value="under_verification_phase_2">
                     Sedang diverifikasi Tahap 2
+                  </SelectItem>
+                  <SelectItem value="waiting_reverification_phase_2">
+                    Menunggu re-verifikasi Tahap 2
                   </SelectItem>
                   <SelectItem value="verified_phase_2">
                     Lulus Verifikasi Tahap 2

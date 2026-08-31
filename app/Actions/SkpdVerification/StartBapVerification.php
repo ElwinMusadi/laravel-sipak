@@ -20,6 +20,7 @@ class StartBapVerification
     {
         return DB::transaction(function () use ($actor, $bap, $stage): BapVerification {
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
+            $previousStatus = $lockedBap->status;
 
             if ($actor->role !== $stage->verifierRole()) {
                 throw ValidationException::withMessages([
@@ -27,7 +28,7 @@ class StartBapVerification
                 ]);
             }
 
-            if ($lockedBap->status !== $stage->startBapStatus()) {
+            if (! $stage->canStartFrom($lockedBap->status)) {
                 throw ValidationException::withMessages([
                     'status' => "BAP belum berada pada antrean {$stage->label()}.",
                 ]);
@@ -45,11 +46,18 @@ class StartBapVerification
                 ]);
             }
 
+            $latestAttempt = BapVerification::query()
+                ->where('bap_id', $lockedBap->id)
+                ->where('stage', $stage)
+                ->lockForUpdate()
+                ->latest('attempt')
+                ->value('attempt');
+
             $verification = BapVerification::create([
                 'bap_id' => $lockedBap->id,
                 'verifier_id' => $actor->id,
                 'stage' => $stage,
-                'attempt' => 1,
+                'attempt' => ($latestAttempt ?? 0) + 1,
                 'status' => BapVerificationStatus::InProgress,
                 'started_at' => now(),
             ]);
@@ -58,10 +66,11 @@ class StartBapVerification
             $lockedBap->save();
 
             $this->audit->handle($actor, $lockedBap, $stage->auditPrefix().'_started', [
-                'status' => $stage->startBapStatus()->value,
+                'status' => $previousStatus->value,
             ], [
                 'verification_id' => $verification->id,
                 'stage' => $verification->stage->value,
+                'attempt' => $verification->attempt,
                 'status' => $lockedBap->status->value,
                 'started_at' => $verification->started_at->toISOString(),
             ]);

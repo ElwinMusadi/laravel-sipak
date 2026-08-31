@@ -20,6 +20,7 @@ import { dashboard } from '@/routes';
 import { index as bapCancellationsIndex } from '@/routes/bap-cancellations';
 import { index as bapVerificationsIndex } from '@/routes/bap-verifications';
 import { index as bapVerificationsPhaseTwoIndex } from '@/routes/bap-verifications-phase-2';
+import { index as bapClarificationsIndex } from '@/routes/bap-clarifications';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
@@ -30,7 +31,8 @@ export type ApplicationPermission =
     | 'viewBaps'
     | 'viewBapCancellations'
     | 'viewBapVerificationsPhase1'
-    | 'viewBapVerificationsPhase2';
+    | 'viewBapVerificationsPhase2'
+    | 'viewBapClarifications';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -77,7 +79,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'Klarifikasi',
                 icon: MessagesSquare,
-                availability: 'planned',
+                href: bapClarificationsIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBapClarifications',
             },
         ],
     },

@@ -255,7 +255,7 @@ test('a physical mismatch records a structured discrepancy and sends the BAP to 
         'bap_id' => $bap->id,
         'bap_verification_id' => $verification->id,
         'requested_by' => $verifier->id,
-        'status' => 'open',
+        'status' => 'waiting_response',
     ]);
     $this->assertDatabaseHas('audit_logs', [
         'auditable_id' => $bap->id,

@@ -6,6 +6,7 @@ use App\Actions\SkpdInventory\CreateBap;
 use App\Actions\SkpdInventory\SubmitBap;
 use App\Actions\SkpdInventory\UpdateBap;
 use App\BapCancellationReason;
+use App\BapClarificationStatus;
 use App\BapStatus;
 use App\Http\Requests\SkpdInventory\StoreBapRequest;
 use App\Http\Requests\SkpdInventory\UpdateBapRequest;
@@ -158,6 +159,12 @@ class SkpdBapController extends Controller
                     ->latest('created_at')
                     ->limit(8);
             },
+            'verifications' => function (Relation $query): void {
+                $query
+                    ->with(['verifier:id,name', 'clarificationRequest'])
+                    ->orderBy('stage')
+                    ->orderBy('attempt');
+            },
         ]);
 
         return Inertia::render('baps/show', [
@@ -201,6 +208,25 @@ class SkpdBapController extends Controller
                             ? 'Sistem'
                             : $audit->actor->name,
                         'created_at' => $audit->created_at->toIso8601String(),
+                    ])
+                    ->values()
+                    ->all(),
+                'verification_history' => $bap->verifications
+                    ->map(fn ($verification): array => [
+                        'id' => $verification->id,
+                        'stage' => $verification->stage->value,
+                        'stage_label' => $verification->stage->label(),
+                        'attempt' => $verification->attempt,
+                        'verifier' => $verification->verifier->name,
+                        'result' => $verification->result?->value,
+                        'started_at' => $verification->started_at->toIso8601String(),
+                        'completed_at' => $verification->completed_at?->toIso8601String(),
+                        'clarification' => $verification->clarificationRequest === null ? null : [
+                            'id' => $verification->clarificationRequest->id,
+                            'status' => $verification->clarificationRequest->status->value,
+                            'status_label' => $this->clarificationStatusLabel($verification->clarificationRequest->status),
+                            'can_view' => $actor->can('view-bap-clarification', $verification->clarificationRequest),
+                        ],
                     ])
                     ->values()
                     ->all(),
@@ -317,10 +343,28 @@ class SkpdBapController extends Controller
             'bap_verification.phase_2_discrepancy_recorded' => 'Selisih Verifikasi Tahap 2 dicatat',
             'bap_verification.phase_2_sent_to_clarification' => 'BAP dikirim ke klarifikasi dari Tahap 2',
             'bap_verification.phase_2_completed' => 'Verifikasi Tahap 2 diselesaikan',
+            'bap_clarification.requested' => 'Permintaan klarifikasi dibuat',
+            'bap_clarification.opened' => 'Klarifikasi dibuka oleh Loket',
+            'bap_clarification.response_submitted' => 'Tanggapan Loket dikirim',
+            'bap_clarification.reviewed' => 'Tanggapan klarifikasi ditinjau',
+            'bap_clarification.resolved' => 'Klarifikasi diselesaikan',
+            'bap_clarification.reopened' => 'Klarifikasi dibuka kembali',
+            'bap_clarification.reverification_requested' => 'BAP masuk antrean verifikasi ulang',
+            'bap_clarification.reverification_completed' => 'Verifikasi ulang diselesaikan',
             'bap_usage_segments.created' => 'Usage segment BAP dicatat',
             'bap_usage_segments.updated' => 'Usage segment BAP diperbarui',
             'bap_cancellation.recorded' => 'Nomeratur batal/rusak dicatat',
             default => 'Perubahan BAP',
+        };
+    }
+
+    private function clarificationStatusLabel(BapClarificationStatus $status): string
+    {
+        return match ($status) {
+            BapClarificationStatus::WaitingResponse => 'Menunggu Tanggapan',
+            BapClarificationStatus::Responded => 'Menunggu Review',
+            BapClarificationStatus::Resolved => 'Selesai',
+            BapClarificationStatus::Reopened => 'Perlu Klarifikasi Ulang',
         };
     }
 

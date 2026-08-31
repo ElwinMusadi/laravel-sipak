@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\BapStatus;
+use App\BapVerificationStage;
 use App\Models\Bap;
 use App\Models\BapCancellation;
+use App\Models\BapClarificationRequest;
 use App\Models\SkpdAllocation;
 use App\Models\User;
 use App\SkpdAllocationStatus;
@@ -120,16 +122,45 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-bap-verifications-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
 
         Gate::define('start-bap-verification-phase-1', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasPenetapan
-            && $bap->status === BapStatus::Submitted);
+            && BapVerificationStage::Phase1->canStartFrom($bap->status));
 
         Gate::define('complete-bap-verification-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
 
         Gate::define('view-bap-verifications-phase-2', fn (User $user): bool => $user->role === UserRole::PetugasVerifikasi);
 
         Gate::define('start-bap-verification-phase-2', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasVerifikasi
-            && $bap->status === BapStatus::WaitingVerificationPhase2);
+            && BapVerificationStage::Phase2->canStartFrom($bap->status));
 
         Gate::define('complete-bap-verification-phase-2', fn (User $user): bool => $user->role === UserRole::PetugasVerifikasi);
+
+        Gate::define('view-bap-clarifications', fn (User $user): bool => in_array($user->role, [
+            UserRole::PetugasLoket,
+            UserRole::PetugasPenetapan,
+            UserRole::PetugasVerifikasi,
+        ], true) && ($user->role !== UserRole::PetugasLoket || $user->loket_id !== null));
+
+        Gate::define('view-bap-clarification', function (User $user, BapClarificationRequest $clarification): bool {
+            if ($user->role === UserRole::PetugasLoket) {
+                return $user->loket_id !== null && $user->loket_id === $clarification->bap->loket_id;
+            }
+
+            return match ($user->role) {
+                UserRole::PetugasPenetapan => $clarification->verification->stage === BapVerificationStage::Phase1,
+                UserRole::PetugasVerifikasi => $clarification->verification->stage === BapVerificationStage::Phase2,
+                default => false,
+            };
+        });
+
+        Gate::define('open-bap-clarification', fn (User $user, BapClarificationRequest $clarification): bool => $user->role === UserRole::PetugasLoket
+            && $user->loket_id !== null
+            && $user->loket_id === $clarification->bap->loket_id);
+
+        Gate::define('respond-bap-clarification', fn (User $user, BapClarificationRequest $clarification): bool => $user->can('open-bap-clarification', $clarification));
+
+        Gate::define('review-bap-clarification', fn (User $user, BapClarificationRequest $clarification): bool => match ($clarification->verification->stage) {
+            BapVerificationStage::Phase1 => $user->role === UserRole::PetugasPenetapan,
+            BapVerificationStage::Phase2 => $user->role === UserRole::PetugasVerifikasi,
+        });
     }
 
     private function canViewBap(User $user, Bap $bap): bool

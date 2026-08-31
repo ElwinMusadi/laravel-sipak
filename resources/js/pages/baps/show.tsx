@@ -1,5 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, FileWarning, History, Pencil } from 'lucide-react';
+import {
+    ArrowLeft,
+    FileWarning,
+    History,
+    MessageSquare,
+    Pencil,
+} from 'lucide-react';
 import {
     BapStatusBadge,
     type BapStatus,
@@ -26,6 +32,7 @@ import {
 import { create as createCancellation } from '@/routes/baps/cancellations';
 import { show as showCancellation } from '@/routes/bap-cancellations';
 import { edit, index } from '@/routes/baps';
+import { show as showClarification } from '@/routes/bap-clarifications';
 
 type Props = {
     bap: {
@@ -68,6 +75,26 @@ type Props = {
             event: string;
             actor: string;
             created_at: string;
+        }[];
+        verification_history: {
+            id: number;
+            stage: 'phase_1' | 'phase_2';
+            stage_label: string;
+            attempt: number;
+            verifier: string;
+            result: 'passed' | 'discrepancy' | null;
+            started_at: string;
+            completed_at: string | null;
+            clarification: {
+                id: number;
+                status:
+                    | 'waiting_response'
+                    | 'responded'
+                    | 'resolved'
+                    | 'reopened';
+                status_label: string;
+                can_view: boolean;
+            } | null;
         }[];
     };
 };
@@ -204,6 +231,96 @@ export default function ShowBap({ bap }: Props) {
                         </CardContent>
                     </Card>
                 </section>
+
+                <Card>
+                    <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+                        <div className="grid gap-1">
+                            <CardTitle>
+                                Riwayat verifikasi dan klarifikasi
+                            </CardTitle>
+                            <p className="text-muted-foreground text-sm">
+                                Attempt pemeriksaan dan klarifikasi tersimpan
+                                terpisah dari data sumber BAP.
+                            </p>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {bap.verification_history.length === 0 ? (
+                            <p className="text-muted-foreground text-sm">
+                                BAP belum memiliki riwayat verifikasi.
+                            </p>
+                        ) : (
+                            <div className="grid gap-3">
+                                {bap.verification_history.map(
+                                    (verification) => (
+                                        <div
+                                            key={verification.id}
+                                            className="border-border flex flex-col justify-between gap-3 rounded-lg border p-4 sm:flex-row sm:items-center"
+                                        >
+                                            <div className="grid gap-1 text-sm">
+                                                <p className="font-medium">
+                                                    {verification.stage_label} ·
+                                                    Attempt #
+                                                    {verification.attempt}
+                                                </p>
+                                                <p className="text-muted-foreground">
+                                                    {verification.verifier} ·{' '}
+                                                    {verification.completed_at
+                                                        ? formatDateTime(
+                                                              verification.completed_at,
+                                                          )
+                                                        : 'Sedang berlangsung'}
+                                                </p>
+                                                <p className="text-muted-foreground">
+                                                    {verification.result ===
+                                                    'passed'
+                                                        ? 'Hasil: Lulus'
+                                                        : verification.result ===
+                                                            'discrepancy'
+                                                          ? 'Hasil: Ada selisih'
+                                                          : 'Hasil belum tersedia'}
+                                                </p>
+                                            </div>
+                                            {verification.clarification ? (
+                                                verification.clarification
+                                                    .can_view ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={showClarification(
+                                                                verification
+                                                                    .clarification
+                                                                    .id,
+                                                            )}
+                                                        >
+                                                            <MessageSquare data-icon="inline-start" />
+                                                            {
+                                                                verification
+                                                                    .clarification
+                                                                    .status_label
+                                                            }
+                                                        </Link>
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm">
+                                                        {
+                                                            verification
+                                                                .clarification
+                                                                .status_label
+                                                        }
+                                                    </span>
+                                                )
+                                            ) : null}
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">

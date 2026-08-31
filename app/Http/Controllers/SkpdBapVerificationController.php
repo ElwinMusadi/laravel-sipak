@@ -280,7 +280,7 @@ class SkpdBapVerificationController extends Controller
     }
 
     /**
-     * @return array{id: int, verifier: string, status: string, result: string|null, notes: string|null, started_at: string, completed_at: string|null, discrepancies: list<array{type: string, label: string, expected_value: string, actual_value: string, difference: int|null, notes: string}>, clarification_requested: bool}|null
+     * @return array{id: int, attempt: int, verifier: string, status: string, result: string|null, notes: string|null, started_at: string, completed_at: string|null, discrepancies: list<array{type: string, label: string, expected_value: string, actual_value: string, difference: int|null, notes: string}>, clarification_requested: bool}|null
      */
     private function verificationData(?BapVerification $verification): ?array
     {
@@ -290,6 +290,7 @@ class SkpdBapVerificationController extends Controller
 
         return [
             'id' => $verification->id,
+            'attempt' => $verification->attempt,
             'verifier' => $verification->verifier->name,
             'status' => $verification->status->value,
             'result' => $verification->result?->value,

@@ -119,6 +119,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Get clarification responses submitted by this Petugas Loket.
+     *
+     * @return HasMany<BapClarificationResponse, $this>
+     */
+    public function bapClarificationResponses(): HasMany
+    {
+        return $this->hasMany(BapClarificationResponse::class, 'responded_by');
+    }
+
+    /**
+     * Get clarification review decisions made by this verifier.
+     *
+     * @return HasMany<BapClarificationResolution, $this>
+     */
+    public function resolvedBapClarifications(): HasMany
+    {
+        return $this->hasMany(BapClarificationResolution::class, 'resolved_by');
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

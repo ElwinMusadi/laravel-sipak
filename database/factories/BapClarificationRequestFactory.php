@@ -28,7 +28,7 @@ class BapClarificationRequestFactory extends Factory
             'requested_by' => User::factory()->state([
                 'role' => UserRole::PetugasPenetapan,
             ]),
-            'status' => BapClarificationStatus::Open,
+            'status' => BapClarificationStatus::WaitingResponse,
             'notes' => 'Perlu konfirmasi atas selisih pemeriksaan fisik.',
         ];
     }

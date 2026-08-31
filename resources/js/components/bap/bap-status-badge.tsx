@@ -5,8 +5,10 @@ export type BapStatus =
     | 'submitted'
     | 'under_verification'
     | 'needs_clarification'
+    | 'waiting_reverification_phase_1'
     | 'waiting_verification_phase_2'
     | 'under_verification_phase_2'
+    | 'waiting_reverification_phase_2'
     | 'verified_phase_2';
 
 const statusPresentation: Record<
@@ -29,6 +31,10 @@ const statusPresentation: Record<
         label: 'Perlu Klarifikasi',
         className: 'border-destructive/30 bg-destructive/10 text-destructive',
     },
+    waiting_reverification_phase_1: {
+        label: 'Menunggu Verifikasi Ulang Tahap 1',
+        className: 'border-primary/30 bg-primary/15 text-primary',
+    },
     waiting_verification_phase_2: {
         label: 'Menunggu Verifikasi Tahap 2',
         className:
@@ -37,6 +43,11 @@ const statusPresentation: Record<
     under_verification_phase_2: {
         label: 'Sedang Diverifikasi Tahap 2',
         className: 'border-primary/30 bg-primary/15 text-primary',
+    },
+    waiting_reverification_phase_2: {
+        label: 'Menunggu Verifikasi Ulang Tahap 2',
+        className:
+            'border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
     },
     verified_phase_2: {
         label: 'Lulus Verifikasi Tahap 2',

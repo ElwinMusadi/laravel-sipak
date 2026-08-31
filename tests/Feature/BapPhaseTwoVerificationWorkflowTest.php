@@ -327,7 +327,7 @@ test('multiple Phase 2 physical mismatches record independent discrepancies and 
         'bap_id' => $bap->id,
         'bap_verification_id' => $verification->id,
         'requested_by' => $verifier->id,
-        'status' => 'open',
+        'status' => 'waiting_response',
     ]);
     $this->assertDatabaseHas('audit_logs', [
         'auditable_id' => $bap->id,
