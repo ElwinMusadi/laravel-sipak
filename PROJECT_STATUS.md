@@ -1,249 +1,174 @@
 # SIPAK — STATUS PROYEK
 
 **Pembaruan terakhir:** 31 Agustus 2026
-**Fase saat ini:** PHASE 10 — KLARIFIKASI, PENYELESAIAN SELISIH & RE-VERIFIKASI
-**Status fase:** Implementasi fungsional selesai dan tervalidasi pada SQLite lokal. Validasi visual browser langsung serta target MySQL masih perlu dilakukan di lingkungan target.
+**Fase saat ini:** PHASE 11 — PENERIMAAN & FINALISASI ADMINISTRATIF BENDAHARA BARANG
+**Status fase:** Implementasi fungsional selesai dan tervalidasi pada SQLite lokal. Validasi browser interaktif serta perilaku lock pada MySQL target masih perlu dilakukan pada lingkungan target.
 
 ## Fase Saat Ini
 
-PHASE 10 — KLARIFIKASI, PENYELESAIAN SELISIH & RE-VERIFIKASI.
+PHASE 11 — PENERIMAAN & FINALISASI ADMINISTRATIF BENDAHARA BARANG.
 
 ## Status Fase
 
-Selisih dari Verifikasi Tahap 1 maupun Tahap 2 kini dapat ditangani oleh Loket terkait, ditinjau verifier pada tahap sumber, dibuka kembali bila tanggapan belum cukup, lalu dikembalikan ke antrean verifikasi ulang sebagai attempt baru. Tidak ada finalisasi, approval Bendahara Barang, rekonsiliasi, laporan bulanan, PDF final, atau stock closing.
+Bendahara Barang dapat menerima BAP yang sudah `verified_phase_2` menjadi `completed`. Proses ini adalah penerimaan/finalisasi administratif, bukan approval tambahan, tidak mengubah data sumber inventaris, dan tidak menambah reporting, PDF, Excel, rekonsiliasi, atau stock closing.
 
 ## Ringkasan
 
-- Satu `BapClarificationRequest` terikat pada satu `BapVerification`, sehingga satu ticket dapat mengelompokkan seluruh discrepancy dari satu attempt pemeriksaan.
-- `BapClarificationResponse` menyimpan setiap tanggapan Loket per putaran, sedangkan `BapClarificationResolution` menyimpan keputusan verifier untuk tanggapan tersebut.
-- Penyelesaian tidak mengubah BAP, usage segment, cancellation, allocation, inventory, atau discrepancy historis. Ia hanya mengubah state BAP ke antrean re-verifikasi tahap sumber.
-- `StartBapVerification` membuat nomor attempt berikutnya per BAP dan tahap; attempt lama tidak pernah ditimpa.
+- Satu-satunya transisi baru adalah `verified_phase_2 → completed`.
+- Hanya role `BendaharaBarang` yang dapat membuka antrean, detail administrasi, dan menjalankan penerimaan.
+- Penerimaan menyimpan `received_by`, `received_at` dari server, serta `receipt_notes` opsional.
+- Queue aktif hanya memuat BAP `verified_phase_2`; queue selesai adalah riwayat read-only BAP `completed`.
+- BAP tetap memakai nomor aktual `#id`; sistem tidak mengarang format nomor BAP baru.
 
-## Klarifikasi
+## Penerimaan BAP
 
-Ticket dibuat atomik oleh `CompleteBapVerification` ketika hasil sebuah attempt adalah `discrepancy`. Ticket menyimpan BAP, verification sumber, requester, pesan permintaan, status, waktu dibuat, dan penerima Loket yang diturunkan dari BAP. Status workflow yang digunakan adalah `waiting_response`, `responded`, `resolved`, dan `reopened`.
+Saat Bendahara Barang mengonfirmasi penerimaan, action domain mengunci BAP dan memvalidasi ulang bahwa:
 
-Aktivitas **Buka** mencatat petugas Loket pertama serta waktunya tanpa menciptakan state terpisah. Status `open` dievaluasi, tetapi tidak dipakai karena tidak membawa perubahan workflow tambahan dibanding `waiting_response`.
+- status masih `verified_phase_2`;
+- terdapat hasil **lulus** Verifikasi Tahap 1 dan Tahap 2;
+- tidak ada `bap_verifications` berstatus `in_progress`; dan
+- tidak ada klarifikasi berstatus `waiting_response`, `responded`, atau `reopened`.
 
-## Discrepancy
-
-- Discrepancy tetap menjadi historical finding pada `bap_verification_discrepancies` dan terhubung ke ticket melalui `bap_verification_id`.
-- Satu ticket dapat menampilkan semua discrepancy dari verification yang sama; tidak ada duplikasi ticket per discrepancy.
-- Response atau resolution tidak boleh memperbarui expected value, actual value, difference, maupun catatan discrepancy asli.
-
-## Ownership
-
-- **Requester:** Petugas Penetapan untuk sumber Tahap 1 atau Petugas Verifikasi untuk sumber Tahap 2, direkam pada `requested_by` milik ticket.
-- **Target/owner:** Loket pemilik BAP. Tidak ada `assigned_to` personal karena Blueprint belum menetapkan penanggung jawab individu.
-- **Respondent:** Petugas Loket aktif pada Loket pemilik BAP, direkam per response sebagai `responded_by`.
-- **Resolver:** Petugas Penetapan untuk ticket Tahap 1 atau Petugas Verifikasi untuk ticket Tahap 2, direkam per resolution sebagai `resolved_by`.
-- **Re-verifier:** pengguna dengan role verifier tahap sumber; implementasi tidak mengunci pada orang yang membuat attempt sebelumnya.
-
-## Role
-
-- Petugas Loket hanya melihat, membuka, dan menanggapi ticket BAP Loketnya sendiri.
-- Petugas Penetapan hanya melihat serta meninjau ticket dari `phase_1`.
-- Petugas Verifikasi hanya melihat serta meninjau ticket dari `phase_2`.
-- Role lain tidak mempunyai akses operasional ke antrean atau aksi klarifikasi.
-
-## Clarification Lifecycle
-
-`needs_clarification → waiting_response → responded → {resolved | reopened}`
-
-Ticket `reopened` kembali dapat ditanggapi Loket. Ticket `resolved` memindahkan BAP ke antrean re-verifikasi yang sesuai; ia tidak langsung mengubah hasil attempt sebelumnya.
-
-## Request
-
-Ketika verifier menyelesaikan attempt dengan `discrepancy`, sistem membuat satu ticket `waiting_response`, menyimpan catatan requester, dan merekam audit `bap_clarification.requested`. Ticket baru akan dibuat bila attempt re-verifikasi berikutnya kembali menghasilkan discrepancy.
-
-## Response
-
-Petugas Loket mengirim response teks melalui route khusus. Sistem mengunci ticket dan BAP, memeriksa ownership Loket dan state `needs_clarification`, lalu menyimpan nomor putaran berurutan, `responded_by`, isi response, serta `responded_at`. Ticket berubah ke `responded` dan audit `bap_clarification.response_submitted` dicatat.
-
-## Review
-
-Petugas Penetapan hanya dapat meninjau response Tahap 1; Petugas Verifikasi hanya dapat meninjau response Tahap 2. Review hanya dapat dilakukan pada response terakhir saat ticket berstatus `responded`.
-
-## Resolution
-
-Keputusan `resolved` atau `reopened`, catatan reviewer, resolver, dan waktu keputusan disimpan sebagai record terpisah pada `bap_clarification_resolutions`. Satu response hanya boleh mempunyai satu resolution. Semua resolution tetap dapat dibaca dari detail ticket.
-
-## Reopen
-
-Keputusan `reopened` mempertahankan BAP pada `needs_clarification`, mengubah ticket ke `reopened`, dan membuka putaran response berikutnya untuk Loket. Model data mendukung beberapa pasang response/resolution tanpa menghapus riwayat sebelumnya; UI menyajikannya sebagai timeline linear, bukan workflow multi-ticket yang kompleks.
-
-## Re-verification
-
-Keputusan `resolved` tidak menyatakan BAP lulus. Sistem mengubah BAP ke status menunggu re-verifikasi berdasarkan stage verification sumber, lalu verifier yang berwenang memulai pemeriksaan ulang melalui alur verifikasi yang telah ada.
-
-## Verification Attempt
-
-`bap_verifications.attempt` dihitung ulang per kombinasi BAP dan stage di dalam transaksi. Attempt `1` yang menghasilkan discrepancy tetap `completed/discrepancy`; pemeriksaan ulang membuat attempt `2` dengan status `in_progress`, checklist baru, result baru, dan audit baru. Unique key `(bap_id, stage, attempt)` tetap menjadi pengaman data.
-
-## Phase 1 Re-entry
-
-Resolusi ticket dari `phase_1` memindahkan BAP:
-
-`needs_clarification → waiting_reverification_phase_1 → under_verification`
-
-Jika attempt Tahap 1 yang baru `passed`, BAP masuk `waiting_verification_phase_2`. Jika kembali discrepancy, BAP kembali ke `needs_clarification` dan ticket baru terikat pada attempt tersebut.
-
-## Phase 2 Re-entry
-
-Resolusi ticket dari `phase_2` memindahkan BAP:
-
-`needs_clarification → waiting_reverification_phase_2 → under_verification_phase_2`
-
-Jika attempt Tahap 2 yang baru `passed`, BAP menjadi `verified_phase_2`. Jika kembali discrepancy, BAP kembali ke `needs_clarification` dengan ticket baru pada attempt Tahap 2 tersebut.
-
-## History
-
-Detail BAP menampilkan riwayat verification per stage dan attempt, hasil, completion time, serta tautan ticket terkait bila pengguna berwenang. Detail klarifikasi menampilkan discrepancy asli, request, seluruh response/resolution round, dan event audit klarifikasi. Tidak ada reset atau overwrite attempt/discrepancy lama.
-
-## Audit
-
-Audit yang ditambahkan mencakup:
-
-- `bap_clarification.requested`;
-- `bap_clarification.opened`;
-- `bap_clarification.response_submitted`;
-- `bap_clarification.reviewed`;
-- `bap_clarification.resolved`;
-- `bap_clarification.reopened`;
-- `bap_clarification.reverification_requested`; dan
-- `bap_clarification.reverification_completed`.
-
-Audit start dan completion verification juga kini membawa nomor attempt.
-
-## Authorization
-
-Gate route, `Gate::authorize()` pada controller, dan validasi ulang role/ownership/state di action bekerja berlapis. Direct HTTP untuk Loket lain, Loket yang mencoba review, dan verifier lintas tahap menghasilkan `403`; penolakan state menghasilkan validation error tanpa mutasi data.
-
-## Concurrency
-
-Semua aksi klarifikasi menggunakan `DB::transaction(..., attempts: 3)` dan `lockForUpdate()` atas ticket serta BAP. Response juga mengunci record response ketika menghitung putaran berikutnya; review mengunci response terakhir dan state ticket; start/re-verification mengunci BAP dan attempt. Uji sequential response kedua membuktikan state `responded` menolak response ganda. Race MySQL aktual masih belum diverifikasi pada server MySQL.
-
-## UI/UX
-
-- Navigation `Klarifikasi` tersedia berdasarkan permission server-derived untuk tiga role operasional.
-- Queue satu halaman menyesuaikan role: **Klarifikasi Saya** untuk Loket, **Klarifikasi Tahap 1** untuk Petugas Penetapan, dan **Klarifikasi Tahap 2** untuk Petugas Verifikasi.
-- Queue memuat BAP, Loket, tahap, ringkasan discrepancy, status Bahasa Indonesia, waktu request, dan durasi menunggu.
-- Detail memisahkan informasi BAP, discrepancy expected/actual/difference, request, response, resolution, dan riwayat audit. Form response memakai textarea; review memakai dialog keputusan.
-- Badge BAP dan filter BAP mengenali state re-verifikasi. Komponen mengikuti shadcn/ui yang telah terpasang dengan Amber Minimal serta mendukung theme aplikasi.
-
-## Route
-
-- `GET /bap-clarifications` — antrean yang tersaring role dan state.
-- `GET /bap-clarifications/{clarification}` — detail ticket sesuai authorization.
-- `POST /bap-clarifications/{clarification}/open` — mencatat pembukaan oleh Loket.
-- `POST /bap-clarifications/{clarification}/responses` — mengirim response Loket.
-- `POST /bap-clarifications/{clarification}/review` — resolve atau reopen oleh verifier tahap sumber.
-
-Wayfinder telah diregenerasi dengan varian form setelah route ditambahkan.
-
-## Action / Domain Layer
-
-- `OpenBapClarification` mencatat pembukaan pertama oleh Loket pada state yang masih dapat ditanggapi.
-- `SubmitBapClarificationResponse` membuat response putaran baru dan memindahkan ticket ke `responded`.
-- `ReviewBapClarification` membuat resolution, membuka ulang atau memasukkan BAP ke antrean re-verifikasi yang tepat.
-- `StartBapVerification` menghitung attempt baru dan menerima state antrean re-verifikasi.
-- `CompleteBapVerification` memakai attempt `in_progress` terbaru, membuat ticket jika kembali discrepancy, dan tidak menimpa record lama.
-
-## Database
-
-- `bap_clarification_requests` diperluas dengan `opened_by` dan `opened_at`; data status lama `open` dimigrasikan ke `waiting_response`.
-- Tabel baru `bap_clarification_responses` menyimpan response per ticket/round dengan unique key `(bap_clarification_request_id, round)`.
-- Tabel baru `bap_clarification_resolutions` menyimpan resolution per response dengan unique key `bap_clarification_response_id`.
-- CHECK constraint MySQL untuk status BAP diperluas untuk `waiting_reverification_phase_1` dan `waiting_reverification_phase_2`.
-- Migration `2026_08_31_130408_extend_bap_clarification_workflow_for_phase_ten` telah diterapkan pada SQLite lokal. DDL dan locking MySQL target belum diuji.
+Metadata penerimaan dan event audit hanya ditulis setelah seluruh syarat tersebut terpenuhi. Tanggal dari browser (`received_at`, `receipt_date`) dan field sumber BAP ditolak oleh request validation.
 
 ## State Transition
 
-| Dari | Aksi | Ke |
-| --- | --- | --- |
-| `needs_clarification` | ticket dibuat | `waiting_response` pada ticket |
-| `waiting_response` / `reopened` | Loket mengirim response | `responded` pada ticket |
-| `responded` | verifier reopen | `reopened` pada ticket |
-| `responded` | verifier resolve Tahap 1 | `waiting_reverification_phase_1` pada BAP |
-| `responded` | verifier resolve Tahap 2 | `waiting_reverification_phase_2` pada BAP |
-| `waiting_reverification_phase_1` | mulai ulang Tahap 1 | `under_verification` |
-| `waiting_reverification_phase_2` | mulai ulang Tahap 2 | `under_verification_phase_2` |
+| Dari               | Aksi                                           | Ke              |
+| ------------------ | ---------------------------------------------- | --------------- |
+| `verified_phase_2` | Bendahara Barang menerima secara administratif | `completed`     |
+| `completed`        | Tidak ada transisi Phase 11                    | tetap read-only |
 
-## Inventory Impact
+Tidak ada state approval/penetapan tambahan yang dibuat antara `verified_phase_2` dan `completed`.
 
-Tidak ada mutasi Box, Allocation, Usage Segment, Cancellation, inventory ledger, atau stock. Klarifikasi hanya mencatat komunikasi/keputusan dan mengembalikan BAP ke workflow pemeriksaan.
+## Role dan Authorization
+
+- **Bendahara Barang:** melihat antrean administrasi, detail BAP yang eligible/selesai, serta menerima BAP eligible.
+- **Petugas Loket, Petugas Penetapan, Petugas Verifikasi, dan Superadmin:** tidak dapat mengakses antrean maupun endpoint penerimaan melalui HTTP langsung.
+- **Superadmin:** tetap memiliki akses monitoring BAP melalui policy BAP yang sudah ada, tetapi bukan pengguna operasional queue/penerimaan Phase 11.
+
+Authorization berjalan berlapis melalui middleware route, Gate controller, dan validasi role/state di action.
+
+## Concurrency
+
+`ReceiveBapByBendaharaBarang` menggunakan `DB::transaction(..., attempts: 3)` dan `lockForUpdate()` pada BAP, catatan verifikasi, serta klarifikasi yang relevan. Setelah lock, state dan prerequisite dibaca ulang; penerimaan kedua ditolak dan tidak membuat audit kedua.
+
+Pengujian race/lock aktual pada MySQL target belum dilakukan. Validasi saat ini membuktikan pengaman transaksional dan penolakan sequential pada SQLite lokal.
 
 ## Source Immutability
 
-Feature test Phase 10 memotret lalu membuktikan tidak berubahnya field BAP, usage segment, allocation, dan cancellation setelah response, resolution, serta re-verifikasi Tahap 1. Discrepancy attempt awal tetap tersimpan dan dapat dibaca setelah attempt kedua lulus.
+Penerimaan administratif tidak mengubah:
+
+- identitas, tanggal, rentang nomeratur, total penggunaan, atau jumlah online BAP;
+- `BapUsageSegment` dan `SkpdAllocation` sumber;
+- nomeratur batal/rusak;
+- attempt verifikasi, checklist, discrepancy; maupun
+- request, response, dan resolution klarifikasi yang telah menjadi riwayat.
+
+Perubahan yang diizinkan hanya status BAP, metadata penerimaan, dan satu event audit baru.
+
+## Queue dan Detail BAP
+
+Antrean Bendahara Barang menyediakan filter tanggal pelayanan, Loket, status (menunggu/selesai), dan pencarian nomor BAP (`#id`), Loket, atau nomor dalam rentang nomeratur. Tabel menampilkan BAP, tanggal, Loket, rentang nomeratur, total penggunaan, batal/rusak, online, verifier Tahap 1/2, waktu selesai Tahap 2, durasi tunggu atau penerima, serta status administratif.
+
+Detail BAP menyediakan tab Ringkasan, Riwayat Verifikasi, Klarifikasi, dan Riwayat Audit. Ringkasan memuat identitas, source usage segment, dan batal/rusak; riwayat verifikasi memuat checklist serta discrepancy per attempt; klarifikasi memuat request/response/resolution; dan audit memuat aktor serta timestamp.
+
+Dialog penerimaan menyatakan bahwa Verifikasi Tahap 1, Verifikasi Tahap 2, dan seluruh klarifikasi harus selesai. Dialog juga menegaskan bahwa penerimaan tidak mengubah data sumber inventaris.
+
+## Audit
+
+Event baru:
+
+- `bap_administration.received` — merekam actor Bendahara Barang, timestamp server, status lama `verified_phase_2`, status baru `completed`, penerima, waktu penerimaan, dan catatan opsional.
+
+Riwayat audit BAP yang sudah ada tetap tidak diubah.
+
+## Dashboard dan Navigation
+
+- Dashboard Bendahara Barang menampilkan metrik **BAP Hari Ini** dan **Menunggu Penerimaan**, serta work item **BAP menunggu penerimaan** dan **BAP selesai administratif**.
+- Navigation menambahkan **Administrasi BAP** di grup Administrasi hanya bila permission server-derived `viewBapAdministrations` tersedia.
+- Status `completed` menggunakan label Bahasa Indonesia **Selesai Administratif** pada badge dan filter antrean administrasi.
+
+## Route
+
+- `GET /bap-administrations` — antrean Bendahara Barang; mendukung filter dan queue selesai.
+- `GET /bap-administrations/{bap}` — detail read-only BAP `verified_phase_2` atau `completed` untuk Bendahara Barang.
+- `POST /bap-administrations/{bap}/receive` — penerimaan administratif BAP eligible.
+
+Wayfinder telah diregenerasi untuk route tersebut dan frontend memakai helper Wayfinder, bukan URL hard-coded.
+
+## Action / Domain Layer
+
+- `ReceiveBapByBendaharaBarang` mengunci, memvalidasi ulang, mentransisikan BAP, menyimpan metadata penerimaan, dan mencatat audit secara atomik.
+- `ReceiveBapAdministrativeReceiptRequest` menerima hanya `receipt_notes` opsional serta menolak timestamp penerimaan dan field sumber yang dikirim klien.
+- `BapStatus` mengenal `Completed` sebagai state terminal dengan transition tunggal dari `VerifiedPhase2`.
+
+## Database
+
+Migration `2026_08_31_141943_add_administrative_receipt_to_baps_table` menambahkan:
+
+- `baps.received_by` nullable foreign key ke `users` dengan `restrictOnDelete()`;
+- `baps.received_at` nullable timestamp;
+- `baps.receipt_notes` nullable text; dan
+- nilai `completed` pada CHECK constraint status MySQL.
+
+Rollback mengembalikan status `completed` ke `verified_phase_2`, mengembalikan CHECK constraint lama, lalu menghapus metadata penerimaan. Dengan demikian rollback eksplisit membuang metadata finalisasi yang memang tidak dapat direpresentasikan pada skema lama.
+
+## Inventory Impact
+
+Tidak ada mutasi Box, Allocation, inventory ledger, BAP usage segment, cancellation, atau stock. Phase 11 hanya menambah finalisasi administratif pada BAP yang telah lulus verifikasi.
+
+## Buku Kendali
+
+Belum ada fondasi domain, route, atau data Buku Kendali yang terimplementasi. Item navigation yang masih planned tidak dipakai sebagai pengganti ledger atau laporan. Data final BAP untuk fase pelaporan berikutnya tersedia lewat BAP `completed`: tanggal pelayanan, Loket, rentang nomeratur, total penggunaan, online, dan batal/rusak.
 
 ## Testing
 
 ### Feature Test
 
-PASS — `php artisan test --compact`: **123 test, 844 assertion**. `BapClarificationWorkflowTest` PASS: 7 test, 62 assertion; mencakup sumber Tahap 1/Tahap 2, resolve/reopen multi-round, attempt kedua, source immutability, audit, dan HTTP authorization.
+PASS — `php artisan test --compact tests/Feature/BapAdministrativeReceiptWorkflowTest.php`: **11 test, 127 assertion**. Cakupan meliputi antrean eligible/completed, detail, penerimaan dan audit, metadata server-side, penolakan field klien, source immutability, duplicate receipt, prerequisite/clarification aktif, dan HTTP authorization lintas role.
 
-### npm run check
+### Validasi lanjutan
 
-FAIL (pre-existing, di luar scope) — terdapat masalah formatting pada 11 berkas yang tidak disentuh Phase 10: `resources/js/app.tsx`, `components/app-sidebar-header.tsx`, `components/nav-user.tsx`, `components/two-factor-setup-modal.tsx`, `components/user-info.tsx`, `pages/auth/login.tsx`, `pages/dashboard.tsx`, `pages/skpd/allocations/create.tsx`, `pages/skpd/allocations/index.tsx`, `pages/skpd/boxes/index.tsx`, dan `pages/users/index.tsx`. Semua berkas UI Phase 10 yang disentuh diperiksa terpisah: PASS, tanpa warning atau lint error.
-
-### npm run types:check
-
-PASS — TypeScript tanpa error.
-
-### npm run build
-
-PASS — Vite build dan generasi type Wayfinder berhasil.
-
-### PHPStan
-
-PASS — `vendor/bin/phpstan analyse --memory-limit=1G`: 0 error.
-
-### Pint
-
-PASS — `vendor/bin/pint --dirty --format agent`.
-
-### git diff --check
-
-PASS — tidak ada whitespace error.
+- PASS — `php artisan test --compact`: **134 test, 971 assertion**.
+- PASS — `npm run types:check`: TypeScript tanpa error.
+- PASS — `npm run build`: Vite build dan generasi type Wayfinder berhasil.
+- PASS — `vendor/bin/phpstan analyse --memory-limit=1G`: 0 error.
+- PASS — `vendor/bin/pint --dirty --format agent` dan format PHP file Phase 11.
+- PASS — `git diff --check`: tidak ada whitespace error.
+- PASS — migration Phase 11 diterapkan pada SQLite lokal sebagai batch 7.
 
 ## Known Issues
 
-- `npm run check` global masih gagal hanya karena 11 berkas formatting pre-existing di luar scope seperti daftar di atas; berkas tersebut tidak diformat sesuai batas phase.
-- Review browser manual untuk queue/detail pada desktop, mobile, Light Mode, dan Dark Mode belum tersedia di lingkungan ini. Build serta type-check berhasil, tetapi ini bukan pengganti bukti visual interaktif.
-- Migration constraint dan perilaku lock/race MySQL belum divalidasi pada MySQL target.
+- Review browser manual pada desktop/mobile serta Light/Dark Mode belum tersedia di lingkungan ini; type-check dan build bukan pengganti bukti visual interaktif.
+- Constraint DDL dan race/lock MySQL belum divalidasi pada server MySQL target.
+- `npm run check` global masih gagal hanya karena 12 berkas formatting pre-existing di luar scope: `resources/js/app.tsx`, `components/app-sidebar-header.tsx`, `components/nav-user.tsx`, `components/two-factor-setup-modal.tsx`, `components/user-info.tsx`, `pages/auth/login.tsx`, `pages/baps/index.tsx`, `pages/dashboard.tsx`, `pages/skpd/allocations/create.tsx`, `pages/skpd/allocations/index.tsx`, `pages/skpd/boxes/index.tsx`, dan `pages/users/index.tsx`. Berkas frontend Phase 11 sendiri lulus format/lint saat diperiksa terpisah.
 
 ## Technical Debt
 
-- Target ticket masih pada level Loket, bukan assignee individu; tidak ada redistribusi atau eskalasi.
-- Tidak ada SLA, attachment bukti fisik, notifikasi, atau penjadwalan pengingat karena belum ada aturan bisnis.
-- UI multi-round bersifat timeline linear dan belum menyediakan filter/penugasan khusus untuk volume ticket besar.
+- Tidak ada notifikasi, SLA, attachment bukti fisik, atau eskalasi karena aturan bisnisnya belum diberikan.
+- Tidak ada halaman register Buku Kendali atau reporting; data yang tersedia sengaja hanya menjadi input fase berikutnya.
 
 ## Open Questions
 
-1. **Ownership individu:** apakah target harus tetap seluruh Petugas Loket pada Loket BAP, pembuat BAP, atau penanggung jawab Loket tertentu? Opsi bersama Loket memberi kontinuitas shift; assignee individu memberi akuntabilitas personal tetapi memerlukan aturan pengalihan saat tidak aktif.
-2. **SLA:** apakah request/response/review membutuhkan batas waktu, pengingat, serta eskalasi? Tanpa keputusan ini, waktu tunggu hanya bersifat informasi dan tidak memicu tindakan sistem.
-3. **Identitas re-verifier:** apakah re-verifikasi boleh dikerjakan verifier lain dengan role/stage yang sama atau wajib verifier pembuat finding? Implementasi saat ini memakai role/stage agar operasional tidak terblokir, tetapi aturan personal perlu diputuskan bila dibutuhkan.
-4. **Bukti fisik:** apakah response perlu attachment atau cukup narasi dan pemeriksaan ulang langsung? Attachment memerlukan aturan format, retensi, akses, dan penyimpanan.
+1. Apakah Bendahara Barang dapat menolak BAP, dan jika ya, apakah harus kembali ke klarifikasi atau ke status/record baru?
+2. Apakah penerimaan `completed` dapat dibatalkan atau dibuka kembali, oleh siapa, dan bagaimana jejak audit/efek inventory-nya?
+3. Apakah koreksi BAP setelah `completed` diperbolehkan, melalui mekanisme apa, dan apakah harus membuat BAP pengganti?
+4. Apakah terdapat beberapa Bendahara Barang dengan scope Loket/wilayah tertentu, delegation, atau pemisahan tugas yang harus dibatasi server-side?
+5. Apakah nomor/register Buku Kendali, aturan penomoran, dan proses pelaporan periodik perlu dibentuk dari BAP `completed`?
 
 ## Keputusan Teknis
 
-- Satu ticket per verification attempt mengelompokkan banyak discrepancy agar request/review dapat dilakukan bersama; response dan resolution dipisah untuk audit serta multiple round.
-- Target owner diturunkan dari `bap.loket_id`, bukan menduplikasi `loket_id` atau mengarang assignee personal.
-- Resolved mengembalikan BAP ke stage sumber dengan state re-verifikasi eksplisit; start membuat attempt baru melalui counter database yang dikunci.
-- Ticket/response/resolution dan BAP dikunci dalam transaksi; source dan historical findings tidak dimutasi.
-- Route frontend menggunakan Wayfinder; tidak ada URL hard-coded atau dependency/UI framework baru.
+- Phase 11 memakai transisi langsung `verified_phase_2 → completed` karena Phase 10 memang berhenti pada `verified_phase_2` dan brief Phase 11 secara eksplisit menempatkan penerimaan Bendahara Barang setelah kedua tahap verifikasi. Blueprint lama yang menyebut approval Kasie/Kepala tidak diimplementasikan sebagai state tambahan karena belum ada aturan Phase 11 yang menetapkannya; konflik ini harus diputuskan sebelum workflow tersebut diperluas.
+- Timestamp penerimaan selalu berasal dari server, bukan input frontend.
+- Penerimaan dikunci dan diverifikasi ulang pada domain layer; Gate frontend/presentation tidak diperlakukan sebagai authorization.
+- Route frontend menggunakan Wayfinder, sedangkan Tabs memakai primitive shadcn/ui yang sudah ada tanpa menambah dependency.
 
 ## Keputusan Bisnis
 
-- Petugas Penetapan menangani klarifikasi dan re-verifikasi Tahap 1; Petugas Verifikasi menangani Tahap 2; Petugas Loket hanya menanggapi BAP Loketnya.
-- Keputusan `resolved` berarti response cukup untuk meminta pemeriksaan ulang, bukan kelulusan otomatis.
-- Hasil lulus attempt Tahap 1 kembali ke antrean Tahap 2; hasil lulus attempt Tahap 2 menjadi `verified_phase_2`.
+- Istilah operasional yang digunakan adalah **Diterima Bendahara Barang** dan **Selesai Administratif**; tidak memakai istilah approved.
+- BAP yang selesai administratif bersifat read-only dalam scope Phase 11.
+- Tidak ada reporting, PDF/Excel, rekonsiliasi, stock closing, atau jurnal pada Phase 11.
 
-## Batasan Phase Berikutnya
+## Handoff ke Phase 12
 
-Jangan menambahkan finalization, approval Bendahara Barang, monthly reporting, PDF final, stock closing, rekonsiliasi, perubahan data sumber BAP, maupun mutasi inventory tanpa aturan bisnis eksplisit.
-
-## Handoff ke Phase 11
-
-Tidak ada pekerjaan Phase 11 yang dimulai otomatis. Input yang tersedia adalah ticket/responses/resolutions, riwayat attempt immutable, dan state `verified_phase_2` atau `needs_clarification`. Sebelum phase berikutnya, putuskan ownership individu, SLA/escalation, bukti fisik, serta aturan proses setelah `verified_phase_2`.
+Phase 11 berhenti setelah finalisasi administratif. Jika Phase 12 dimulai dengan aturan bisnis eksplisit, gunakan BAP `completed` sebagai sumber pelaporan dengan dimensi tanggal pelayanan, Loket, rentang nomeratur, total penggunaan, penggunaan online, pembatalan/kerusakan, verifier, dan metadata penerimaan. Jangan membuat Buku Kendali, laporan, PDF, Excel, closing, atau perubahan sumber data sebelum aturan tersebut diberikan.

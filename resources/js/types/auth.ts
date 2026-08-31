@@ -27,6 +27,7 @@ export type Auth = {
         viewBapVerificationsPhase1: boolean;
         viewBapVerificationsPhase2: boolean;
         viewBapClarifications: boolean;
+        viewBapAdministrations: boolean;
     };
 };
 

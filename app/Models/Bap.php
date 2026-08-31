@@ -24,8 +24,11 @@ use LogicException;
  * @property BapStatus $status
  * @property int $created_by
  * @property CarbonInterface|null $submitted_at
+ * @property int|null $received_by
+ * @property CarbonInterface|null $received_at
+ * @property string|null $receipt_notes
  */
-#[Fillable(['loket_id', 'service_date', 'numerator_start', 'numerator_end', 'total_usage', 'online_usage_count', 'status', 'created_by', 'submitted_at'])]
+#[Fillable(['loket_id', 'service_date', 'numerator_start', 'numerator_end', 'total_usage', 'online_usage_count', 'status', 'created_by', 'submitted_at', 'received_by', 'received_at', 'receipt_notes'])]
 class Bap extends Model
 {
     /** @use HasFactory<BapFactory> */
@@ -49,6 +52,16 @@ class Bap extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the Bendahara Barang who received this BAP administratively.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
     /**
@@ -126,6 +139,7 @@ class Bap extends Model
             'service_date' => 'date',
             'status' => BapStatus::class,
             'submitted_at' => 'datetime',
+            'received_at' => 'datetime',
         ];
     }
 }

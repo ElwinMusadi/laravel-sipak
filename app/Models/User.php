@@ -89,6 +89,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get BAP records received administratively by this Bendahara Barang.
+     *
+     * @return HasMany<Bap, $this>
+     */
+    public function administrativelyReceivedBaps(): HasMany
+    {
+        return $this->hasMany(Bap::class, 'received_by');
+    }
+
+    /**
      * Get BAP cancellation records created by the user.
      *
      * @return HasMany<BapCancellation, $this>

@@ -13,6 +13,7 @@ enum BapStatus: string
     case UnderVerificationPhase2 = 'under_verification_phase_2';
     case WaitingReverificationPhase2 = 'waiting_reverification_phase_2';
     case VerifiedPhase2 = 'verified_phase_2';
+    case Completed = 'completed';
 
     public function canTransitionTo(self $status): bool
     {
@@ -32,7 +33,8 @@ enum BapStatus: string
                 self::WaitingReverificationPhase1,
                 self::WaitingReverificationPhase2,
             ], true),
-            self::VerifiedPhase2 => false,
+            self::VerifiedPhase2 => $status === self::Completed,
+            self::Completed => false,
         };
     }
 }

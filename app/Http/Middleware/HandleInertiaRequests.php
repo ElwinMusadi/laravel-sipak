@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
                     'viewBapVerificationsPhase1' => $request->user()?->can('view-bap-verifications-phase-1') ?? false,
                     'viewBapVerificationsPhase2' => $request->user()?->can('view-bap-verifications-phase-2') ?? false,
                     'viewBapClarifications' => $request->user()?->can('view-bap-clarifications') ?? false,
+                    'viewBapAdministrations' => $request->user()?->can('view-bap-administrations') ?? false,
                 ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

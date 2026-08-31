@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SkpdAllocationController;
+use App\Http\Controllers\SkpdBapAdministrativeReceiptController;
 use App\Http\Controllers\SkpdBapCancellationController;
 use App\Http\Controllers\SkpdBapClarificationController;
 use App\Http\Controllers\SkpdBapController;
@@ -22,6 +23,17 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->group(function (): void {
             Route::get('/', [SkpdBapCancellationController::class, 'index'])->name('index');
             Route::get('{bapCancellation}', [SkpdBapCancellationController::class, 'show'])->name('show');
+        });
+
+    Route::middleware('can:view-bap-administrations')
+        ->prefix('bap-administrations')
+        ->name('bap-administrations.')
+        ->group(function (): void {
+            Route::get('/', [SkpdBapAdministrativeReceiptController::class, 'index'])->name('index');
+            Route::get('{bap}', [SkpdBapAdministrativeReceiptController::class, 'show'])->name('show');
+            Route::post('{bap}/receive', [SkpdBapAdministrativeReceiptController::class, 'receive'])
+                ->middleware('can:receive-bap-administratively,bap')
+                ->name('receive');
         });
 
     Route::middleware('can:view-bap-clarifications')

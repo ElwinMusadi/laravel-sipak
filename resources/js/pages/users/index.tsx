@@ -200,7 +200,7 @@ export default function UserIndex({ users, filters, roles, lokets }: Props) {
         </Card>
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>

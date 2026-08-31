@@ -56,6 +56,12 @@ class DashboardController extends Controller
             ]);
         }
 
+        if ($actor->role === UserRole::BendaharaBarang) {
+            return Inertia::render('dashboard', [
+                'dashboard' => $this->bendaharaBarangDashboard($bapQuery, $todayCount),
+            ]);
+        }
+
         $waitingCount = (clone $bapQuery)
             ->whereIn('status', [BapStatus::Submitted->value, BapStatus::UnderVerification->value])
             ->count();
@@ -374,6 +380,56 @@ class DashboardController extends Controller
 
     /**
      * @param  Builder<Bap>  $bapQuery
+     * @return array<string, mixed>
+     */
+    private function bendaharaBarangDashboard(Builder $bapQuery, int $todayCount): array
+    {
+        $waitingReceiptCount = (clone $bapQuery)
+            ->where('status', BapStatus::VerifiedPhase2->value)
+            ->count();
+        $completedCount = (clone $bapQuery)
+            ->where('status', BapStatus::Completed->value)
+            ->count();
+
+        return [
+            'metrics' => [
+                [
+                    'id' => 'today',
+                    'label' => 'BAP Hari Ini',
+                    'value' => $todayCount,
+                    'description' => 'BAP pada tanggal pelayanan hari ini',
+                ],
+                [
+                    'id' => 'waiting',
+                    'label' => 'Menunggu Penerimaan',
+                    'value' => $waitingReceiptCount,
+                    'description' => 'BAP yang lulus Verifikasi Tahap 2',
+                ],
+            ],
+            'workItems' => [
+                [
+                    'id' => 'waiting-administrative-receipt',
+                    'title' => 'BAP menunggu penerimaan',
+                    'count' => $waitingReceiptCount,
+                    'status' => 'waiting',
+                    'description' => 'Periksa ringkasan dan terima BAP yang telah lulus seluruh verifikasi.',
+                    'href' => route('bap-administrations.index'),
+                ],
+                [
+                    'id' => 'completed-administrative-receipt',
+                    'title' => 'BAP selesai administratif',
+                    'count' => $completedCount,
+                    'status' => 'completed',
+                    'description' => 'Lihat BAP yang telah diterima secara read-only.',
+                    'href' => route('bap-administrations.index', ['status' => 'completed']),
+                ],
+            ],
+            'recentBaps' => $this->recentBaps($bapQuery),
+        ];
+    }
+
+    /**
+     * @param  Builder<Bap>  $bapQuery
      * @return list<array{id: int, loket: string, serviceDate: string, submittedAt: string|null, status: string}>
      */
     private function recentBaps(Builder $bapQuery): array
@@ -407,6 +463,7 @@ class DashboardController extends Controller
             BapStatus::UnderVerificationPhase2 => 'in_progress',
             BapStatus::WaitingReverificationPhase2 => 'waiting',
             BapStatus::VerifiedPhase2 => 'completed',
+            BapStatus::Completed => 'completed',
         };
     }
 }

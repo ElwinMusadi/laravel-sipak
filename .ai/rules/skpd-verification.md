@@ -10,3 +10,6 @@ Hanya Petugas Penetapan yang dapat memulai dan menyelesaikan verifikasi. Aksi pe
 
 ## Klarifikasi BAP mempertahankan temuan dan attempt
 Satu ticket klarifikasi terikat pada satu BapVerification dan dapat memiliki beberapa response/resolution round. Jangan ubah discrepancy atau source BAP saat klarifikasi; keputusan resolved harus mengantrekan attempt verifikasi baru pada stage sumber, bukan menimpa attempt lama.
+
+## Penerimaan BAP adalah finalisasi administratif
+Hanya Bendahara Barang yang dapat mentransisikan BAP `verified_phase_2` langsung ke `completed`. Action harus mengunci BAP, memvalidasi ulang kelulusan Tahap 1/Tahap 2 serta tidak ada verifikasi atau klarifikasi aktif, lalu hanya mencatat metadata penerimaan dan audit tanpa memutasi sumber inventaris.

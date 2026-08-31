@@ -8,6 +8,7 @@ import {
     BookOpenCheck,
     CircleCheckBig,
     CircleX,
+    ClipboardCheck,
     FileText,
     FileWarning,
     Hash,
@@ -21,6 +22,7 @@ import { index as bapCancellationsIndex } from '@/routes/bap-cancellations';
 import { index as bapVerificationsIndex } from '@/routes/bap-verifications';
 import { index as bapVerificationsPhaseTwoIndex } from '@/routes/bap-verifications-phase-2';
 import { index as bapClarificationsIndex } from '@/routes/bap-clarifications';
+import { index as bapAdministrationsIndex } from '@/routes/bap-administrations';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
@@ -32,7 +34,8 @@ export type ApplicationPermission =
     | 'viewBapCancellations'
     | 'viewBapVerificationsPhase1'
     | 'viewBapVerificationsPhase2'
-    | 'viewBapClarifications';
+    | 'viewBapClarifications'
+    | 'viewBapAdministrations';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -167,6 +170,13 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
     {
         title: 'Administrasi',
         items: [
+            {
+                title: 'Administrasi BAP',
+                icon: ClipboardCheck,
+                href: bapAdministrationsIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBapAdministrations',
+            },
             {
                 title: 'Pengguna',
                 icon: Users,

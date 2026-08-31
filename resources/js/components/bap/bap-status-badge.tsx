@@ -9,7 +9,8 @@ export type BapStatus =
     | 'waiting_verification_phase_2'
     | 'under_verification_phase_2'
     | 'waiting_reverification_phase_2'
-    | 'verified_phase_2';
+    | 'verified_phase_2'
+    | 'completed';
 
 const statusPresentation: Record<
     BapStatus,
@@ -51,6 +52,11 @@ const statusPresentation: Record<
     },
     verified_phase_2: {
         label: 'Lulus Verifikasi Tahap 2',
+        className:
+            'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    },
+    completed: {
+        label: 'Selesai Administratif',
         className:
             'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
     },
