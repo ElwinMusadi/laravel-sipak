@@ -10,6 +10,7 @@ use App\Http\Controllers\SkpdBapVerificationController;
 use App\Http\Controllers\SkpdBoxController;
 use App\Http\Controllers\SkpdBukuKendaliController;
 use App\Http\Controllers\SkpdInventoryController;
+use App\Http\Controllers\SkpdLaporanPemakaianController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('buku-kendali', [SkpdBukuKendaliController::class, 'index'])
         ->middleware('can:view-buku-kendali')
         ->name('buku-kendali.index');
+
+    Route::get('laporan/pemakaian', [SkpdLaporanPemakaianController::class, 'index'])
+        ->middleware('can:view-laporan-pemakaian')
+        ->name('laporan-pemakaian.index');
 
     Route::middleware('can:view-bap-clarifications')
         ->prefix('bap-clarifications')

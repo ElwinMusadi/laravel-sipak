@@ -137,6 +137,11 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-buku-kendali', fn (User $user): bool => $user->role === UserRole::BendaharaBarang);
 
+        Gate::define('view-laporan-pemakaian', fn (User $user): bool => in_array($user->role, [
+            UserRole::BendaharaBarang,
+            UserRole::KepalaUptd,
+        ], true));
+
         Gate::define('view-bap-administration', fn (User $user, Bap $bap): bool => $user->role === UserRole::BendaharaBarang
             && in_array($bap->status, [BapStatus::VerifiedPhase2, BapStatus::Completed], true));
 

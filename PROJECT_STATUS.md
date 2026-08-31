@@ -1,179 +1,217 @@
 # SIPAK — STATUS PROYEK
 
 **Pembaruan terakhir:** 1 September 2026
-**Fase saat ini:** PHASE 12 — BUKU KENDALI & REKAP ADMINISTRATIF BAP
-**Status fase:** Selesai di SQLite lokal; Buku Kendali read-only dari BAP completed.
+**Fase saat ini:** PHASE 13 — LAPORAN PEMAKAIAN SKPD
+**Status fase:** Selesai di SQLite lokal; laporan adalah proyeksi read-only BAP selesai administratif.
 
 ## Fase Saat Ini
 
-PHASE 12 — BUKU KENDALI & REKAP ADMINISTRATIF BAP.
+PHASE 13 — LAPORAN PEMAKAIAN SKPD.
 
 ## Status Fase
 
-Buku Kendali tersedia sebagai index administratif BAP Selesai Administratif. Tidak ada create, edit, delete, penerimaan, verifikasi, klarifikasi, atau mutasi inventaris.
+Laporan pemakaian periodik tersedia tanpa tabel laporan, ledger transaksi, atau proses closing baru. Data selalu dihitung kembali dari BAP yang selesai administratif saat laporan dibuka.
 
 ## Ringkasan
 
-- Sumber tunggal adalah BAP berstatus completed.
-- Tidak ada tabel, migration, materialized ledger, atau nomor register baru.
-- Buku Kendali adalah query/read model; detail tetap menggunakan BAP yang sudah ada.
+- Sumber tunggal adalah BAP berstatus `completed`.
+- Laporan memakai bulan, tahun, dan filter Loket opsional.
+- Rekap per Loket adalah tampilan operasional provisional, bukan format administrasi resmi.
+- Detail BAP tetap menggunakan halaman BAP existing melalui Wayfinder.
 
-## Buku Kendali
+## Laporan Pemakaian SKPD
 
-Halaman Buku Kendali ber-subtitle **Rekap administratif BAP yang telah selesai.** Daftar memuat tanggal pelayanan, nomor BAP, Loket, range nomeratur, total pemakaian, online, batal/rusak, penerima Bendahara Barang, dan status Selesai Administratif.
+Halaman **Laporan Pemakaian SKPD** ber-subtitle **Rekap pemakaian Bukti SKPD berdasarkan BAP yang telah selesai administratif.** Halaman bersifat read-only dan menampilkan periode, ringkasan, rekap per Loket, serta detail BAP terpaginasikan.
 
 ## Sumber Data
 
-Sumber resmi:
+Sumber laporan adalah BAP `completed`, dengan data BAP berikut sebagai nilai laporan:
 
-- BAP completed: tanggal, Loket, range, total, online, status, dan metadata penerimaan;
-- BAP usage segment: ledger range sumber; dan
-- BAP cancellation: total batal/rusak.
+- tanggal pelayanan;
+- Loket;
+- range nomeratur;
+- `total_usage`;
+- `online_usage_count`; dan
+- jumlah `BapCancellation`.
 
-Tidak ada salinan BAP yang perlu disinkronkan manual.
+Usage segment tetap merupakan ledger range sumber BAP. Penerimaan administratif, verifikasi, dan klarifikasi tidak disalin atau diubah oleh laporan.
 
-## Eligibility Data
+## Data Eligibility
 
-Hanya completed yang masuk. Draft, submitted, under verification, needs clarification, waiting verification, verified phase 2, serta status non-final lain tidak masuk.
+Hanya BAP `completed` yang masuk. Draft, submitted, under verification, needs clarification, waiting reverification, waiting verification phase 2, under verification phase 2, dan `verified_phase_2` tidak masuk, walaupun telah melalui sebagian proses verifikasi.
 
-## Read-Only
+## Periode
 
-Route Buku Kendali hanya GET. Tidak ada Action mutasi dan permintaan tidak mengubah BAP, usage segment, cancellation, allocation, verifikasi, klarifikasi, atau inventory.
-
-## Rekap
-
-Ringkasan mengikuti filter daftar:
-
-- Total BAP;
-- Total SKPD Terpakai;
-- Total Online; dan
-- Total Batal/Rusak.
-
-Online tetap bagian dari total pemakaian. Batal/rusak tetap termasuk SKPD terpakai dan tidak dikurangkan.
-
-## Rekap Per Loket
-
-Belum dibuat. Blueprint tidak menetapkan bentuk rekap per Loket Phase 12. Filter Loket dan aggregate query sudah tersedia sebagai fondasi.
-
-## Rekap Harian
-
-Belum dibuat. Buku Kendali menampilkan tanggal pelayanan per baris dan filter rentang tanggal, tanpa membuat tabel rekap transaksi baru.
+Periode memakai tanggal pelayanan BAP. Input bulan dan tahun diubah menjadi hari pertama sampai hari terakhir bulan secara inklusif, lalu diterapkan dengan `whereDate`. Default adalah bulan berjalan pada timezone aplikasi.
 
 ## Filter
 
-- Tanggal mulai dan akhir menggunakan tanggal pelayanan BAP.
-- Default adalah bulan berjalan pada timezone aplikasi terkonfigurasi.
-- Loket berasal dari Loket yang tersedia.
-- Validasi server memastikan format tanggal, urutan periode, dan id Loket.
+Filter server-side tersedia untuk:
 
-Model date terserialisasi sebagai timestamp ISO pada SQLite lokal; query mengikuti convention Phase 11 memakai whereDate agar perbandingan tanggal bisnis konsisten.
+- bulan;
+- tahun; dan
+- Loket opsional.
 
-## Search
+Tidak ada search aggregate karena laporan berorientasi periode. Detail BAP dapat dipaginasikan 15 baris per halaman dan seluruh query filter dipertahankan dalam pagination.
 
-Pencarian server-side mendukung nomor BAP dengan awalan #, nama Loket, dan nomeratur tujuh digit seperti 0582608. Nomeratur dicari terhadap range BAP dan presentation menggunakan formatter existing yang mempertahankan leading zero.
+## Summary
 
-## Pagination
+Ringkasan selalu berasal dari scope BAP `completed` yang sama dengan detail dan rekap Loket:
 
-Pagination berjalan di server, 15 BAP per halaman, dengan query string dipertahankan. Tidak ada pemuatan seluruh BAP completed untuk filter atau pencarian client-side.
+- Total BAP;
+- SKPD Terpakai;
+- Online; dan
+- Batal/Rusak.
+
+## Total Pemakaian
+
+Total pemakaian adalah `sum(baps.total_usage)`. Nilai ini adalah total domain BAP yang telah dibentuk dari range/usage segment pada proses BAP; laporan tidak menghitung ulang atau mengubah range tersebut. Batal/rusak tidak dikurangkan dari total pemakaian.
+
+## Online
+
+Online adalah `sum(baps.online_usage_count)` dari BAP completed dan tetap merupakan bagian dari total pemakaian. Tidak ada field online baru maupun inferensi dari angka total.
+
+## Batal/Rusak
+
+Batal/rusak adalah `count(bap_cancellations)` untuk BAP pada scope laporan. Nilai tersebut dihitung terpisah dari aggregate BAP agar satu BAP dengan beberapa pembatalan tidak melipatgandakan total BAP, terpakai, atau online.
+
+## Rekap Per Loket
+
+Rekap per Loket menampilkan BAP, terpakai, online, dan batal/rusak. Desktop memakai tabel dengan total; mobile memakai kartu ringkas. Tombol **Detail BAP** menerapkan Loket yang dipilih pada laporan yang sama.
+
+Rekap ini belum diklaim sebagai format resmi administrasi. Format resmi dan grouping wajib diputuskan sebelum ada print/export resmi.
+
+## Rekap Harian
+
+Belum dibuat. Blueprint tidak menetapkan grouping/format harian, sehingga Phase 13 tidak membuat tampilan tambahan tanpa keputusan bisnis.
+
+## Rekap Nomeratur
+
+Belum dibuat sebagai grouping terpisah. Detail BAP menampilkan range nomeratur dari source BAP dengan formatter tujuh digit, misalnya `0582608–0582617`, sehingga leading zero tetap terjaga dan sumber dapat ditelusuri.
 
 ## Aggregation
 
-Total BAP, pemakaian, dan online dihitung database-side dari query completed yang telah terfilter. Total batal/rusak dihitung dari BAP cancellation dengan subquery id BAP pada scope sama.
+Aggregate dilakukan database-side:
 
-Tidak ada join langsung BAP ke usage segment dan cancellation saat aggregate. Satu BAP dengan banyak segment/cancellation tetap terhitung sekali untuk total BAP, pemakaian, dan online.
+- `count`, `sum(total_usage)`, dan `sum(online_usage_count)` dari query BAP completed;
+- cancellation melalui query terpisah dengan subquery id BAP yang sama; dan
+- rekap per Loket melalui grouping BAP dan grouping cancellation terpisah.
 
-## Data Consistency
+Tidak ada pemuatan semua BAP ke PHP untuk menjumlahkan laporan.
 
-Total pemakaian memakai BAP total_usage, yaitu hasil domain calculation dari range saat BAP dibuat/diperbarui dan selaras dengan usage segment ledger. Online memakai online_usage_count; batal/rusak memakai count BAP cancellation.
+## Double Count Protection
 
-Test membuktikan satu BAP dengan dua usage segment dan dua cancellation tetap menghasilkan total 13, online 5, dan batal/rusak 2.
+Laporan tidak melakukan join langsung BAP ke usage segment dan cancellation pada query aggregate. Dengan demikian, satu BAP yang memiliki beberapa usage segment dan beberapa cancellation tetap dihitung sekali untuk BAP, total pemakaian, dan online; cancellation tetap dihitung sesuai jumlah record sebenarnya.
+
+Feature test memakai BAP dengan dua usage segment dan tiga cancellation pada dua BAP. Hasilnya tetap Total BAP 2, pemakaian 30, online 8, dan batal/rusak 3.
 
 ## Traceability
 
-Setiap baris menyediakan link Wayfinder ke detail BAP existing. Bendahara Barang dapat menelusuri usage segment, cancellation, verifikasi, klarifikasi, penerimaan, dan audit pada BAP sumber tanpa detail duplikat.
+Detail BAP menampilkan tanggal pelayanan, nomor BAP, Loket, range nomeratur, terpakai, online, dan batal/rusak. Tidak ada angka aggregate tanpa daftar BAP sumber.
+
+## Drill-down
+
+Setiap baris dan rekap Loket menyediakan navigasi ke detail yang relevan. Rekap Loket memperbarui filter laporan ke Loket tersebut; tombol detail BAP membuka halaman BAP existing yang sudah menampilkan usage segment, cancellation, verifikasi, klarifikasi, penerimaan, dan audit source.
 
 ## Authorization
 
-- Gate view-buku-kendali dan middleware route menjadi authorization server-side.
-- Bendahara Barang dapat mengakses Buku Kendali.
-- Petugas Loket, Petugas Penetapan, Petugas Verifikasi, dan Superadmin ditolak pada HTTP langsung.
-- Permission Inertia hanya mengontrol menu; Gate tetap authority.
+Gate `view-laporan-pemakaian` dan middleware route melindungi HTTP langsung. Akses diberikan kepada Bendahara Barang dan Kepala UPTD sesuai Blueprint: Bendahara mengelola Pusat Laporan Bulanan dan Kepala UPTD memiliki Pusat Laporan Read-Only.
+
+Petugas Loket, Petugas Penetapan, Petugas Verifikasi, dan Superadmin ditolak. Superadmin tidak otomatis diberi oversight karena policy laporan read-only existing tidak memberi akses tersebut.
 
 ## Scope Loket
 
-Buku Kendali hanya untuk Bendahara Barang yang melihat seluruh Loket pada implementasi aktual. Petugas Loket tidak memiliki akses sehingga tidak ada scope lintas Loket yang dapat dibypass. Aturan beberapa Bendahara menurut wilayah/Loket belum tersedia.
+Tidak ada Petugas Loket yang diberi akses laporan pada implementasi aktual, sehingga tidak ada scope lintas-Loket yang dapat dibypass. Bendahara Barang dan Kepala UPTD melihat laporan seluruh Loket. Jika akses Loket diperlukan di masa depan, Gate dan query wajib ditambah scope `loket_id` server-side beserta test cross-Loket.
 
 ## Performance
 
-- Loket dan penerima Bendahara Barang di-eager-load.
-- Cancellation daftar memakai withCount.
-- Aggregate tidak meng-hydrate seluruh dataset.
-- Pagination database-side.
-- Pengukuran query plan dan efektivitas index pada MySQL target belum dilakukan.
+- Filter memakai index BAP existing `status, service_date`.
+- Cancellation memakai index `bap_id` existing.
+- Loket hanya dimuat untuk detail BAP yang sedang dipaginasi.
+- Aggregate dan grouping berjalan di database.
+- Tidak ada migration baru karena index SQLite existing sudah mendukung query Phase 13.
+
+Query plan dan efektivitas index pada MySQL target belum diuji.
+
+## Buku Kendali Consistency
+
+Laporan dan Buku Kendali memakai scope sumber BAP `completed` yang sama. Feature test memeriksa dataset Agustus identik dan menghasilkan Total BAP 2, pemakaian 30, online 8, dan batal/rusak 1 pada kedua halaman.
 
 ## UI/UX
 
-Halaman memakai shadcn/ui existing, token Amber semantik, serta appearance Light/Dark aplikasi.
+Halaman memakai primitive shadcn/ui dan token tema Amber existing.
 
-- Desktop menggunakan tabel informasi-padat.
-- Mobile menggunakan kartu ringkas agar tidak memaksa tabel lebar.
-- Kartu ringkasan responsif menampilkan empat metrik.
-- Filter dan pencarian tersedia pada semua breakpoint.
+- Ringkasan empat kartu responsif.
+- Desktop memakai tabel rekap dan tabel detail dengan scroll internal terkontrol.
+- Mobile memakai kartu Loket dan kartu BAP agar tabel lebar tidak dipaksakan ke layar kecil.
+- Tidak ada warna hard-coded atau tindakan mutasi.
 
-Validasi browser interaktif desktop/mobile dan Light/Dark belum dilakukan karena plugin Browser Pest tidak terpasang.
+Build dan type check membuktikan halaman dapat dikompilasi. Review browser interaktif desktop/mobile dan Light/Dark belum tervalidasi karena Browser Pest tidak terpasang.
 
 ## Navigation
 
-Item **Buku Kendali** yang sudah ada pada grup SKPD diaktifkan dengan route dan permission server-derived. Tidak ada menu duplikat.
+Item sidebar **Laporan → Pemakaian** aktif, menggunakan Wayfinder, dan hanya ditampilkan ketika permission server-derived `viewLaporanPemakaian` bernilai benar. Menu laporan lain tetap planned dan tidak diubah.
 
 ## Dashboard
 
-Tidak ada dashboard atau metric baru. Dashboard Phase 11 tetap memuat pekerjaan penerimaan administratif.
+Tidak ada dashboard, shortcut, maupun metric baru karena Blueprint tidak memberi requirement dashboard Phase 13 yang spesifik.
 
 ## Route
 
-- GET /buku-kendali — buku-kendali.index
+- `GET /laporan/pemakaian` — `laporan-pemakaian.index`
 
-Route dilindungi auth, active, dan Gate. Wayfinder telah diregenerasi; frontend memakai helper generated.
+Route berada di dalam middleware `auth`, `active`, dan `can:view-laporan-pemakaian`. Wayfinder dibuat ulang dengan varian form proyek.
 
 ## Query / Service Layer
 
-SkpdBukuKendaliController memegang read query kecil sesuai convention:
+`SkpdLaporanPemakaianController` mengikuti convention read-query Phase 12:
 
-- completedBapQuery untuk scope completed, periode, Loket, dan search;
-- summaryData untuk aggregate tanpa double count; dan
-- bapData untuk prop presentasi.
+- `completedBapQuery` menentukan eligibility dan periode;
+- `summaryData` menghitung summary;
+- `loketRecapData` menghitung grouping Loket tanpa double count; dan
+- `bapData` membentuk prop detail source.
 
-Tidak ada Action domain karena Phase 12 tidak melakukan mutation.
+Tidak ada Action domain baru karena laporan tidak melakukan mutation.
 
 ## Database
 
-Tidak ada migration atau tabel baru. Schema BAP, usage segment, cancellation, Loket, penerimaan administratif, serta index existing cukup untuk read model.
+Tidak ada migration, tabel `monthly_reports`, `report_entries`, `report_snapshots`, atau duplicate transaction ledger. Schema BAP, usage segment, cancellation, Loket, dan receipt existing digunakan langsung.
 
 ## Inventory Impact
 
-Tidak ada dampak inventory. Buku Kendali tidak mengubah Box, Allocation, status allocation, usage segment, range, maupun stok derived.
+Tidak ada dampak inventaris. Laporan tidak mengubah Box, Allocation, status Allocation, usage segment, range nomeratur, atau stok derived.
 
 ## Source Immutability
 
-Feature test membuktikan request Buku Kendali tidak mengubah raw attribute BAP, usage segment, atau cancellation, dan tidak mencatat audit log baru.
+Feature test membuktikan GET laporan tidak mengubah raw attribute BAP, usage segment, cancellation, verification, clarification, maupun metadata penerimaan administratif.
+
+## Export
+
+Tidak dibuat pada Phase 13. Blueprint menyebut export PDF/Excel secara umum, tetapi tidak memberi format administratif dan instruksi quality gate Phase 13 secara eksplisit melarang PDF, Excel, serta CSV. Konflik scope ini ditunda untuk keputusan Phase berikutnya.
+
+## Print
+
+Tidak dibuat. Tidak ada format print administrasi resmi yang dapat diimplementasikan tanpa mengarang format.
+
+## Monthly Closing
+
+Tidak dibuat. Tidak ada closing bulan, lock periode, reopen period, stock closing, atau snapshot laporan.
 
 ## Testing
 
 ### Feature Test
 
-PASS — BukuKendaliTest: **10 test, 142 assertion**.
+PASS — `LaporanPemakaianSkpdTest`: **10 test, 126 assertion**.
 
-Cakupan: eligibility completed, filter periode/Loket, search BAP/Loket/nomeratur, pagination, aggregate tanpa double count, detail BAP, source immutability, leading-zero source presentation, dan authorization HTTP.
+Cakupan: eligibility completed, batas tanggal bulan/tahun, filter Loket, summary, rekap Loket, aggregate tanpa double count, empty period, consistency Buku Kendali, traceability BAP, leading-zero source, immutability, dan authorization HTTP.
 
 ### Regression Test
 
-PASS — BukuKendaliTest + BapAdministrativeReceiptWorkflowTest: **21 test, 269 assertion**.
-PASS — seluruh suite: **144 test, 1.113 assertion**.
+PASS — seluruh suite: **154 test, 1.239 assertion**.
 
 ### npm run check
 
-FAIL terbatas pada **12 berkas formatting pre-existing** di luar scope: app.tsx, app-sidebar-header.tsx, nav-user.tsx, two-factor-setup-modal.tsx, user-info.tsx, auth/login.tsx, baps/index.tsx, dashboard.tsx, allocation create/index, box index, dan users index. Berkas Buku Kendali sendiri PASS pada pemeriksaan terarah format dan lint.
+FAIL terbatas pada **12 berkas formatting pre-existing** di luar scope: `app.tsx`, `app-sidebar-header.tsx`, `nav-user.tsx`, `two-factor-setup-modal.tsx`, `user-info.tsx`, `auth/login.tsx`, `baps/index.tsx`, `dashboard.tsx`, `allocations/create.tsx`, `allocations/index.tsx`, `boxes/index.tsx`, dan `users/index.tsx`. Berkas `PROJECT_STATUS.md` dan halaman laporan Phase 13 lulus pemeriksaan terarah.
 
 ### npm run types:check
 
@@ -181,7 +219,7 @@ PASS — TypeScript tanpa error.
 
 ### npm run build
 
-PASS — Vite build dan generasi Wayfinder berhasil.
+PASS — Vite build, route/action Wayfinder, serta halaman `laporan-pemakaian` berhasil dibangun.
 
 ### PHPStan
 
@@ -189,7 +227,7 @@ PASS — 0 error.
 
 ### Pint
 
-PASS — vendor/bin/pint --dirty --format agent.
+PASS — `vendor/bin/pint --dirty --format agent`.
 
 ### git diff --check
 
@@ -197,66 +235,52 @@ PASS — tidak ada whitespace error.
 
 ## Known Issues
 
-- npm run check global gagal karena 12 berkas pre-existing di luar scope Phase 12.
-- Browser manual desktop/mobile, Light/Dark, dan aksesibilitas interaktif belum tervalidasi.
-- Query plan, index effectiveness, dan lock MySQL target belum tervalidasi; bukti saat ini dari SQLite lokal.
+- `npm run check` global memiliki formatting pre-existing di luar scope.
+- Browser interaktif desktop/mobile, Light/Dark, dan aksesibilitas belum tervalidasi karena Browser Pest tidak tersedia.
+- Query plan dan index effectiveness pada MySQL target belum tervalidasi; bukti query saat ini berasal dari SQLite lokal.
 
 ## Technical Debt
 
-- Belum ada rekap per Loket atau rekap harian resmi.
-- Belum ada nomor register Buku Kendali.
-- Tidak ada export, PDF, Excel, CSV, atau print layout.
-- Timezone aplikasi masih UTC. Filter memakai timezone aplikasi sebagaimana konfigurasi, tetapi timezone bisnis operasional belum diputuskan eksplisit.
+- Belum ada grouping/format laporan resmi per Loket, harian, atau nomeratur.
+- Belum ada nomor register laporan.
+- Timezone bisnis operasional belum diputuskan; konfigurasi aplikasi masih UTC.
+- Belum ada export dan print karena format administratif belum disahkan.
 
 ## Open Questions
 
-1. Apakah Buku Kendali memerlukan nomor register resmi?
-   - Opsi: memakai id BAP sekarang atau format register bisnis.
-   - Konsekuensi: perlu aturan penomoran, uniqueness, audit, dan backfill sebelum data baru.
-2. Apakah Bendahara Barang dibatasi Loket/wilayah atau terdapat beberapa Bendahara?
-   - Opsi: semua Loket seperti sekarang atau scope penugasan server-side.
-   - Konsekuensi: Gate, query, navigasi, dan test authorization diperluas.
-3. Apakah rekap per Loket dan rekap harian memiliki format operasional resmi?
-   - Opsi: tetap filter/query atau menambah presentation read-only.
-   - Konsekuensi: tidak perlu tabel baru, tetapi dimensi dan total perlu disahkan.
-4. Apakah Buku Kendali memerlukan print atau export?
-   - Opsi: digital-only atau output reporting Phase berikutnya.
-   - Konsekuensi: PDF/Excel/CSV dan layout cetak tidak dibuat tanpa format serta authority.
-5. Timezone bisnis apa untuk batas bulan/tanggal pelayanan?
-   - Opsi: mempertahankan UTC atau menetapkan timezone operasional.
-   - Konsekuensi: perubahan konfigurasi harus diuji terhadap histori dan batas periode BAP.
+1. Apakah rekap per Loket, harian, dan nomeratur harus mengikuti format administrasi resmi?
+    - Opsi: mempertahankan tampilan provisional atau mengesahkan layout/dimensi resmi.
+    - Dampak: menentukan grouping, total, print, export, dan test kontrak laporan berikutnya.
+2. Timezone bisnis apa yang menjadi batas periode operasional?
+    - Opsi: mempertahankan UTC aplikasi atau menetapkan timezone operasional seperti Asia/Makassar.
+    - Dampak: dapat mengubah BAP yang masuk ke batas hari/bulan dan perlu uji histori.
+3. Apakah PDF/Excel harus masuk ke fase reporting berikutnya meskipun Blueprint mencantumkan export secara umum?
+    - Opsi: menetapkan format resmi lebih dahulu atau membangun export non-resmi.
+    - Dampak: format, otorisasi, audit output, dan mekanisme generation harus diputuskan sebelum implementasi.
+4. Apakah Petugas Loket perlu akses laporan yang dibatasi Loket?
+    - Opsi: tetap hanya Bendahara/Kepala UPTD atau memberi akses Loket scoped.
+    - Dampak: Gate, query server-side, navigasi, dan test isolasi Loket berubah.
 
 ## Keputusan Teknis
 
-- Buku Kendali adalah query/read model BAP completed, bukan ledger baru.
-- Aggregate memakai total_usage dan online_usage_count yang sudah dibentuk domain, serta count cancellation dari source relation.
-- Aggregate cancellation dipisah dari aggregate BAP agar tidak double count.
-- Periode default bulan berjalan pada timezone aplikasi; tidak ada bulan hard-coded.
-- Detail memakai BAP show existing melalui Wayfinder.
-- Tidak ada migration karena schema current memadai.
+- Laporan adalah query/read model BAP completed, bukan ledger atau snapshot.
+- Total BAP, pemakaian, dan online dihitung dari BAP; cancellation dihitung dengan aggregate terpisah.
+- Periode menggunakan `service_date` dan batas bulan inklusif pada timezone aplikasi.
+- Rekap Loket memakai grouping BAP dan cancellation terpisah untuk mencegah Cartesian double count.
+- Detail menggunakan BAP existing melalui Wayfinder.
+- Tidak ada migration karena schema/index SQLite existing memadai untuk scope ini.
 
 ## Keputusan Bisnis
 
-- Terminologi status adalah **Selesai Administratif**, konsisten Phase 11.
-- Hanya BAP completed menjadi administrasi Buku Kendali.
-- Batal/rusak dan online tetap termasuk total SKPD terpakai.
-- Bendahara Barang satu-satunya pengguna Phase 12 karena Blueprint tidak memberi basis akses operasional lain.
+- Terminologi status final adalah **Selesai Administratif** (`completed`).
+- Online dan batal/rusak tetap termasuk total SKPD terpakai.
+- Bendahara Barang dan Kepala UPTD dapat melihat laporan read-only berdasarkan Information Architecture Blueprint.
+- Rekap per Loket ditampilkan sebagai tampilan provisional, bukan klaim format resmi.
 
 ## Batasan Phase Berikutnya
 
-Phase 12 tidak mencakup laporan bulanan final, closing, rekonsiliasi, koreksi BAP completed, print, PDF, Excel, CSV, export, nomor register, rekap per Loket resmi, atau rekap harian resmi.
+Phase 13 tidak mencakup PDF, Excel, CSV, print layout resmi, closing, lock/reopen periode, stock closing, inventaris mutation, BAP mutation, verification mutation, clarification mutation, duplicate ledger, maupun tabel snapshot laporan.
 
-## Handoff ke Phase 13
+## Handoff ke Phase 14
 
-Data completed yang siap menjadi source reporting:
-
-- tanggal pelayanan;
-- nomor/id BAP;
-- Loket;
-- range nomeratur tujuh digit;
-- total pemakaian;
-- online;
-- batal/rusak; dan
-- metadata penerimaan Bendahara Barang.
-
-Phase 13 hanya dapat dimulai setelah format, periode, audience, register, print/export, dan aturan bisnis reporting diberikan eksplisit.
+Phase berikutnya perlu memutuskan format laporan resmi, grouping harian/nomeratur, nomor register, timezone bisnis, audience Loket, serta kebijakan dan format export/print sebelum implementasi output resmi dimulai.

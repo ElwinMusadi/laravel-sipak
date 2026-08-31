@@ -29,6 +29,7 @@ export type Auth = {
         viewBapClarifications: boolean;
         viewBapAdministrations: boolean;
         viewBukuKendali: boolean;
+        viewLaporanPemakaian: boolean;
     };
 };
 
