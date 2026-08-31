@@ -17,12 +17,16 @@ import {
     Users,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as bapCancellationsIndex } from '@/routes/bap-cancellations';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
 type NavigationHref = NonNullable<InertiaLinkProps['href']>;
 
-export type ApplicationPermission = 'manageUsers' | 'viewBaps';
+export type ApplicationPermission =
+    | 'manageUsers'
+    | 'viewBaps'
+    | 'viewBapCancellations';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -53,7 +57,7 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
         title: 'Operasional',
         items: [
             {
-                title: 'BAP Pemakaian',
+                title: 'BAP SKPD',
                 icon: FileText,
                 href: bapsIndex(),
                 availability: 'available',
@@ -62,7 +66,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'BAP Batal/Rusak',
                 icon: FileWarning,
-                availability: 'planned',
+                href: bapCancellationsIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBapCancellations',
             },
             {
                 title: 'Klarifikasi',

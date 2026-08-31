@@ -1,193 +1,138 @@
-# SIPAK — STATUS PROYEK
+# PROJECT STATUS — SIPAK
 
-## Fase Saat Ini
-
-PHASE 06 — BAP PEMAKAIAN
-
-## Status Fase
-
-Selesai dan tervalidasi pada scope Phase 06.
-
-## Tanggal
-
-2026-08-30
+**Pembaruan terakhir:** 31 Agustus 2026
+**Fase saat ini:** PHASE 07 — BAP Batal/Rusak
+**Status fase:** Implementasi fungsional selesai; satu quality gate global masih terblokir oleh sembilan berkas format di luar scope Phase 07.
 
 ## Ringkasan
 
-Phase 06 menghadirkan workflow BAP Pemakaian SKPD dari draft sampai submit, daftar dan detail sesuai scope akses, serta integrasi dashboard dari data BAP aktual. Implementasi memakai range-ledger Phase 04 dan allocation Phase 05; tidak ada pengurangan stock mutable, workflow pembatalan/rusak, atau verifikasi BAP pada fase ini.
+Phase 07 menambahkan pencatatan nomeratur SKPD yang batal atau rusak pada BAP draft. Catatan hanya dapat dibuat oleh Petugas Loket pembuat BAP pada Loket yang sama, hanya untuk nomeratur yang telah tercatat pada pemakaian BAP tersebut, dan tidak mengubah ledger persediaan maupun alokasi.
 
-## BAP Pemakaian
+## BAP Batal/Rusak
 
-- Petugas Loket membuat, melihat, memperbarui draft, dan mengirim BAP milik Loket yang ditugaskan kepadanya.
-- Satu BAP memiliki tanggal pelayanan, range nomeratur, total pemakaian derived, pemakaian SKPD Online, pemakaian non-Online, creator, Loket, status, serta waktu submit.
-- Form tidak menyediakan pilihan Loket; Loket selalu berasal dari user autentikasi.
-- Tidak ada nomor/formal BAP fiktif. UI memakai ID BAP sistem dan nomor audit internal yang tersedia.
+- Halaman daftar, detail, dan form pencatatan telah tersedia.
+- BAP berstatus submitted tetap read-only, mengikuti lifecycle BAP Pemakaian Phase 06.
+- Satu BAP dapat memiliki banyak catatan batal/rusak.
 
-## BAP Lifecycle
+## Cancellation Model
 
-- Create menghasilkan `draft`.
-- Draft dapat diubah hanya oleh pembuat Petugas Loket yang memiliki Loket BAP.
-- Submit mengubah status domain menjadi `submitted`, yang dipresentasikan sebagai `Menunggu verifikasi`.
-- BAP submitted bersifat read-only. Tahap verifikasi, klarifikasi, finalisasi, dan reporting tidak ditambahkan.
+- Menggunakan model `BapCancellation` yang sudah tersedia.
+- Setiap catatan menyimpan BAP, nomeratur, alasan, uraian opsional, dan pembuat catatan.
+- Audit event `bap_cancellation.recorded` dicatat ketika pencatatan berhasil.
 
-## BAP Usage Segment
+## Relasi BAP
 
-- Pemakaian dicatat sebagai `BapUsageSegment` per allocation yang dilintasi range BAP.
-- Satu BAP dapat memakai beberapa allocation `accepted` atau `completed` dalam satu range kontinu.
-- Total pemakaian dan sisa allocation tetap dihitung dari ledger segment, bukan kolom stock mutable.
-- Create dan update mencatat audit BAP serta perubahan segment yang bernilai bisnis.
+- `Bap` memiliki relasi `cancellations`.
+- Detail BAP memuat daftar pembatalan/kerusakan, jumlah batal/rusak, dan jumlah pemakaian normal.
 
 ## Nomeratur
 
-- Input browser menerima tepat tujuh digit dan mempertahankan leading zero.
-- Domain dan database tetap menggunakan integer; presentasi menggunakan zero-padding tujuh digit.
-- Total pemakaian selalu dihitung sebagai `end - start + 1`; nilainya tidak dipercaya dari request frontend.
+- Input menerima satu hingga tujuh digit dan ditampilkan kembali sebagai tujuh digit dengan nol di depan.
+- Nomeratur harus berada di rentang BAP dan benar-benar tercatat pada `BapUsageSegment` BAP tersebut.
+- Nomeratur tidak boleh dicatat lebih dari sekali secara global; unique constraint database tetap menjadi lapisan terakhir.
 
-## Sequence Validation
+## Alasan
 
-- BAP pertama Loket dimulai dari awal allocation aktif pertama; BAP berikutnya harus dimulai tepat setelah akhir BAP sebelumnya.
-- Tanggal BAP tidak boleh melampaui hari ini atau mendahului BAP terakhir Loket.
-- Satu Loket hanya dapat memiliki satu BAP untuk satu tanggal.
-- Perubahan range draft ditolak jika sudah ada BAP berikutnya, sehingga kesinambungan nomeratur tidak dapat rusak.
-- Semua validasi range, ownership allocation, dan overlap berjalan di server di bawah transaction serta global inventory lock.
+- Alasan yang tersedia mengikuti enum saat ini: `Batal` dan `Rusak`.
+- Uraian opsional dibatasi hingga 1.000 karakter.
 
-## SKPD Online
+## Validation
 
-- Nilai Online adalah bilangan bulat non-negatif dan merupakan bagian dari total pemakaian.
-- Non-Online dihitung read-only sebagai `total pemakaian - Online`.
-- Request dengan Online melebihi total atau nilai total manual ditolak.
+- Validasi request melarang pengiriman identitas BAP, pembuat, Loket, tanggal layanan, status, dan total pemakaian dari klien.
+- Validasi domain menolak BAP non-draft, nomeratur di luar pemakaian BAP, duplikasi, dan akses lintas Loket/pembuat BAP.
 
-## Allocation Integration
+## Inventory Impact
 
-- BAP hanya dapat memakai allocation yang telah `accepted` atau `completed` dan milik Loket pembuat.
-- Range BAP dapat melintasi allocation berurutan untuk Loket yang sama.
-- Allocation yang seluruh range-nya telah terpakai ditandai `completed`; allocation yang kembali tersisa tetap `accepted`.
+- Tidak ada perubahan pada stok, mutasi, atau ledger persediaan SKPD.
+- Nomeratur batal/rusak tetap dihitung sebagai terpakai sesuai Blueprint.
 
-## Inventory Integration
+## Allocation Impact
 
-- `skpd_inventory_locks.id = 1` dikunci sebelum mutasi BAP dan segment ledger.
-- `CreateBap`, `UpdateBap`, dan `SubmitBap` memakai `DB::transaction(..., attempts: 3)`.
-- Tidak ada migration, redesign schema, atau field persediaan mutable baru pada Phase 06.
+- Tidak ada perubahan pada alokasi, penerimaan alokasi, ataupun saldo alokasi Loket.
 
 ## Authorization
 
-- Gate `view-baps`, `view-all-baps`, `view-bap`, `create-bap`, `update-bap`, dan `submit-bap` melindungi route dan controller.
-- Petugas Loket hanya dapat melihat dan memutasi BAP scope Loket sendiri; update/submit juga mengharuskan ia creator dan BAP masih draft.
-- Role pengawasan dapat membaca sesuai scope; Superadmin tetap read-only untuk mutasi BAP.
-- `loket_id`, `status`, dan `total_usage` dari request eksplisit dilarang untuk mencegah pemalsuan input frontend.
+- `view-bap-cancellations` mengikuti cakupan akses lihat BAP.
+- Pencatatan memerlukan Petugas Loket, Loket yang sama, pembuat BAP yang sama, dan BAP draft.
+- Endpoint tidak menyediakan edit atau hapus.
 
 ## Audit
 
-- Audit mencatat `bap.created`, `bap.updated`, `bap.submitted`, serta event perubahan `bap_usage_segments`.
-- Detail BAP menampilkan riwayat audit relevan bersama actor dan waktu kejadian.
-- Event baru tidak menyimpan password, secret, token, maupun credential.
+- Pencatatan berhasil menghasilkan audit trail `bap_cancellation.recorded` dengan referensi BAP, nomeratur, alasan, dan uraian.
 
 ## UI/UX
 
-- Halaman BAP tersedia di `/baps`, `/baps/create`, `/baps/{bap}`, dan `/baps/{bap}/edit`.
-- Daftar menyediakan pencarian/filter dan tabel yang dapat di-scroll lokal pada layar sempit.
-- Form menampilkan preview total, Online, non-Online, range allocation aktif, dan ringkasan sebelum submit.
-- Dialog submit meminta konfirmasi dan menampilkan ringkasan BAP sebelum state berubah.
-- Dashboard menggunakan metrik BAP hari ini, antrean kerja, dan BAP terbaru dari data aktual; data placeholder BAP dihapus.
+- Navigasi BAP Batal/Rusak aktif berdasarkan izin server-derived.
+- Daftar mendukung pencarian dan filter alasan.
+- Form menggunakan route Wayfinder, normalisasi tampilan tujuh digit saat blur, serta ringkasan BAP dan pemakaian yang tersisa.
+- Detail BAP menyediakan tautan ke catatan batal/rusak dan ringkasan jumlah pemakaian.
 
 ## Route
 
-- `GET baps` — daftar BAP sesuai scope.
-- `GET|POST baps/create` — form dan pembuatan draft BAP.
-- `GET baps/{bap}` — detail BAP.
-- `GET|PUT baps/{bap}/edit` — edit draft BAP milik creator.
-- `POST baps/{bap}/submit` — submit draft BAP.
-- Wayfinder digenerate ulang dengan form variants setelah route/controller ditambahkan.
+- `GET /bap-cancellations` — daftar catatan.
+- `GET /bap-cancellations/{bapCancellation}` — detail catatan.
+- `GET /baps/{bap}/cancellations/create` — form pencatatan.
+- `POST /baps/{bap}/cancellations` — simpan catatan.
 
-## Action / Domain Layer
+## Action Domain
 
-- `CreateBap` menambah validasi tanggal berurutan dan audit segment saat draft dibuat.
-- `UpdateBap` mengunci ledger, membangun ulang segment dari range valid, memulihkan status allocation terdampak, dan menjaga urutan BAP berikutnya.
-- `SubmitBap` mempertahankan transaksi dan lock sebelum mengubah draft menjadi submitted.
-- Controller hanya menangani projection Inertia, authorization, dan delegasi Action.
+- `RecordBapCancellation` menjalankan seluruh mutasi dalam `DB::transaction(..., attempts: 3)`.
+- Action mengunci `skpd_inventory_locks.id = 1`, BAP, segmen pemakaian terkait, dan pemeriksaan duplikasi sebelum membuat catatan.
 
 ## Database
 
-- Schema BAP dan `bap_usage_segments` Foundation Phase 04 dipakai tanpa perubahan.
-- Constraint unik `(loket_id, service_date)`, `numerator_start`, dan `numerator_end` menjadi pertahanan database tambahan atas rule aplikasi.
-- Development/test menggunakan SQLite; target MySQL belum tersedia untuk pengujian integrasi langsung.
+- Tidak ada migration baru pada Phase 07; tabel `bap_cancellations` dan indeks/unique constraint yang sudah tersedia digunakan.
+
+## Concurrency
+
+- Pencatatan mengikuti kontrak lock persediaan global yang sama dengan mutasi domain SKPD lain.
+- Pemeriksaan duplikasi dilakukan di dalam transaksi; unique index database menangani race condition akhir.
 
 ## Testing
 
-### Feature Test
-
-PASS — `php artisan test --compact`: 81 test, 444 assertion.
-
-`BapWorkflowTest` mencakup create multiallocation, payload terlarang, allocation wajib, format/props range, BAP tunggal per Loket/tanggal, range tidak valid, urutan nomeratur, isolasi akses Loket, update draft, submit, dashboard aktual, dan constraint unik database. Regression Phase 03–05 juga lulus pada suite penuh.
-
-### npm run check
-
-PASS — tanpa warning atau lint error.
-
-### npm run types:check
-
-PASS — `tsc --noEmit`.
-
-### npm run build
-
-PASS — Vite production build berhasil.
-
-### PHPStan
-
-PASS — tanpa error.
-
-### Pint
-
-PASS — `vendor/bin/pint --dirty --format agent`.
-
-### git diff --check
-
-PASS — tanpa whitespace error.
+- PASS — `php artisan test tests/Feature/BapCancellationWorkflowTest.php --compact`: 7 test, 90 assertion.
+- PASS — `php artisan test --compact`: 88 test, 534 assertion.
+- PASS — `vendor/bin/phpstan analyse --memory-limit=1G`: 0 error.
+- PASS — `vendor/bin/pint --dirty --format agent`.
+- PASS — `npm run types:check`.
+- PASS — `npm run build`.
+- PASS — `git diff --check`.
+- FAIL (di luar scope Phase 07) — `npm run check` masih melaporkan format pada sembilan berkas perubahan yang sudah ada/berjalan paralel: `app-sidebar-header.tsx`, `nav-user.tsx`, `user-info.tsx`, `baps/index.tsx`, `dashboard.tsx`, `skpd/allocations/create.tsx`, `skpd/allocations/index.tsx`, `skpd/boxes/index.tsx`, dan `users/index.tsx`. Berkas Phase 07 telah diformat dan tidak dilint ulang secara otomatis untuk menghindari perubahan di luar scope.
 
 ## Known Issues
 
-- MySQL target belum tersedia, sehingga contention lock paralel dan DDL belum divalidasi lewat integration test MySQL.
-- Browser E2E/visual automation tidak tersedia. Validasi lint, TypeScript, build, dan test aplikasi lulus; review visual desktop/mobile/light/dark tetap diperlukan sebelum release.
+- Quality gate `npm run check` global belum hijau karena sembilan berkas di luar scope Phase 07 sebagaimana dicatat di atas.
+- Review browser manual dan verifikasi MySQL belum dilakukan pada lingkungan ini.
 
 ## Technical Debt
 
-- Aggregate dashboard BAP dibaca langsung dari ledger dan belum memakai cache karena tidak ada kebutuhan konsistensi cache yang disetujui pada fase ini.
-- Detail audit menampilkan event BAP relevan; halaman audit log lintas domain belum menjadi scope.
+- Master reason `batal_reasons` yang disebut Blueprint belum memiliki daftar bisnis final; Phase 07 memakai enum `Batal` dan `Rusak` yang telah ada.
+- Pengelolaan master reason dan pelaporan khusus batal/rusak ditunda sampai aturan bisnisnya tersedia.
 
 ## Open Questions
 
-- Apakah BAP membutuhkan nomor dokumen formal terpisah dari ID sistem sebelum pencetakan atau pelaporan resmi?
-- Apakah SIGNAL dan PRO NTT harus dipisahkan sebagai channel pelaporan?
-- Bagaimana state, otorisasi, reason master, dan dampak ledger untuk BAP Batal/Rusak?
-- Siapa role dan aturan klarifikasi/approval pada Phase 07?
+- Apakah alasan pembatalan/kerusakan perlu dikelola melalui master data resmi selain dua nilai enum saat ini?
+- Apakah audit cancellation membutuhkan tampilan riwayat khusus atau akan cukup melalui audit trail umum?
 
 ## Keputusan Teknis
 
-- Segment ledger menjadi satu-satunya sumber pemakaian BAP dan allocation; total selalu derived.
-- Lock global dan transaction Phase 04 dipakai ulang untuk seluruh mutasi BAP.
-- Range draft tidak boleh diubah setelah ada BAP lebih baru pada Loket yang sama.
-- Frontend memakai Wayfinder untuk link dan Form controller; URL mutasi tidak di-hardcode.
+- Pencatatan hanya menambah `BapCancellation`; ledger dan allocation ledger tidak dimutasi.
+- Otorisasi dipaksakan pada Gate, route middleware, Form Request, dan Action domain.
+- Wayfinder digenerasikan ulang untuk seluruh route/action baru.
 
 ## Keputusan Bisnis
 
-- BAP submitted dipresentasikan `Menunggu verifikasi`, tetapi tidak dilakukan proses verifikasi pada Phase 06.
-- Petugas Loket hanya beroperasi pada Loket yang ditugaskan; role pengawasan bersifat read-only untuk BAP.
-- Online selalu bagian dari total pemakaian, bukan counter tambahan di luar range.
+- Nomeratur batal/rusak tetap termasuk pemakaian BAP dan tidak mengembalikan stok.
+- BAP submitted tidak dapat menerima catatan baru atau perubahan dari Phase 07.
+- Verifikasi, approval, reconciliation, finalisasi, reporting, dan PDF belum diimplementasikan karena belum ada aturan bisnis Phase berikutnya.
 
-## Perubahan Domain
+## Batasan
 
-- Menambah Action `UpdateBap`, Form Request BAP, Gate, controller, route, Inertia projection, komponen BAP, dan feature test.
-- Memperketat `CreateBap` dengan tanggal berurutan dan audit usage segment.
-- Tidak mengubah migration, enum BAP, atau kontrak range-ledger Phase 04.
+- Tidak ada bulk input, upload, edit, hapus, approval, atau mutasi persediaan/alokasi.
+- Tidak ada perubahan dependency, skema database, atau lifecycle BAP Pemakaian di luar kontrak yang sudah ada.
 
-## Batasan Phase Berikutnya
+## Handoff
 
-- Jangan menambahkan BAP Batal/Rusak, verifikasi, klarifikasi, finalisasi, reporting, PDF, atau nomor BAP formal tanpa keputusan bisnis tertulis.
-- Jangan mengganti ledger dengan field stock mutable atau melonggarkan global lock.
-- Perubahan lifecycle allocation accepted/completed harus mempertahankan audit dan dampak segment BAP.
-
-## Handoff ke Phase 07
-
-- Gunakan BAP `submitted` sebagai antrean awal `Menunggu verifikasi`.
-- Pertahankan scope Loket, transaction lock, unique constraint, dan segment ledger saat mendesain verifikasi/klarifikasi.
-- Putuskan terlebih dahulu role approver, state transition, reason code, serta konsekuensi BAP Batal/Rusak sebelum implementasi Phase 07.
+- Lanjutkan ke pemeriksaan browser/manual dan MySQL jika lingkungan target telah tersedia.
+- Selesaikan format sembilan berkas di luar scope secara terpisah sebelum menjadikan `npm run check` global sebagai quality gate hijau.
+- Jangan melanjutkan ke Phase 08 tanpa aturan bisnis dan persetujuan eksplisit.

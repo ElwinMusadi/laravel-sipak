@@ -6,7 +6,9 @@ use App\BapCancellationReason;
 use App\BapStatus;
 use App\Models\Bap;
 use App\Models\BapCancellation;
+use App\Models\BapUsageSegment;
 use App\Models\User;
+use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -32,15 +34,28 @@ class RecordBapCancellation
                 ]);
             }
 
-            if ($actor->loket_id !== $lockedBap->loket_id) {
+            if (
+                $actor->role !== UserRole::PetugasLoket
+                || $actor->loket_id !== $lockedBap->loket_id
+                || $actor->id !== $lockedBap->created_by
+            ) {
                 throw ValidationException::withMessages([
-                    'loket_id' => 'Batal atau rusak hanya dapat dicatat oleh Petugas Loket pemilik BAP.',
+                    'bap' => 'Batal atau rusak hanya dapat dicatat oleh pembuat BAP pada Loket pemilik BAP.',
                 ]);
             }
 
-            if ($numerator < $lockedBap->numerator_start || $numerator > $lockedBap->numerator_end) {
+            if (
+                $numerator < $lockedBap->numerator_start
+                || $numerator > $lockedBap->numerator_end
+                || ! BapUsageSegment::query()
+                    ->where('bap_id', $lockedBap->id)
+                    ->where('numerator_start', '<=', $numerator)
+                    ->where('numerator_end', '>=', $numerator)
+                    ->lockForUpdate()
+                    ->exists()
+            ) {
                 throw ValidationException::withMessages([
-                    'numerator' => 'Nomeratur batal atau rusak harus berada di dalam range BAP.',
+                    'numerator' => 'Nomeratur tersebut belum tercatat sebagai pemakaian pada BAP ini.',
                 ]);
             }
 

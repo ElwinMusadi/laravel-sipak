@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\SkpdInventory\CreateBap;
 use App\Actions\SkpdInventory\SubmitBap;
 use App\Actions\SkpdInventory\UpdateBap;
+use App\BapCancellationReason;
 use App\BapStatus;
 use App\Http\Requests\SkpdInventory\StoreBapRequest;
 use App\Http\Requests\SkpdInventory\UpdateBapRequest;
@@ -26,7 +27,7 @@ use Inertia\Response;
 class SkpdBapController extends Controller
 {
     /**
-     * Display BAP Pemakaian records visible to the current role.
+     * Display BAP SKPD records visible to the current role.
      */
     public function index(Request $request): Response
     {
@@ -124,7 +125,7 @@ class SkpdBapController extends Controller
             (int) $attributes['online_usage_count'],
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP Pemakaian berhasil disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP SKPD berhasil disimpan.']);
 
         return to_route('baps.show', $bap);
     }
@@ -145,6 +146,11 @@ class SkpdBapController extends Controller
                 $query
                     ->with('skpdAllocation.skpdBox:id,box_number')
                     ->orderBy('numerator_start');
+            },
+            'cancellations' => function (Relation $query): void {
+                $query
+                    ->with('creator:id,name')
+                    ->orderBy('numerator');
             },
             'auditLogs' => function (Relation $query): void {
                 $query
@@ -168,6 +174,25 @@ class SkpdBapController extends Controller
                     ])
                     ->values()
                     ->all(),
+                'cancellations' => [
+                    'items' => $bap->cancellations
+                        ->map(fn ($cancellation): array => [
+                            'id' => $cancellation->id,
+                            'numerator' => $cancellation->numerator,
+                            'reason' => $cancellation->reason->value,
+                            'reason_label' => match ($cancellation->reason) {
+                                BapCancellationReason::Cancelled => 'Batal',
+                                BapCancellationReason::Damaged => 'Rusak',
+                            },
+                            'description' => $cancellation->description,
+                            'created_by' => $cancellation->creator->name,
+                            'created_at' => $cancellation->created_at->toIso8601String(),
+                        ])
+                        ->values()
+                        ->all(),
+                    'quantity' => $bap->cancellations->count(),
+                    'normal_usage_quantity' => $bap->total_usage - $bap->cancellations->count(),
+                ],
                 'timeline' => $bap->auditLogs
                     ->map(fn ($audit): array => [
                         'id' => $audit->id,
@@ -214,7 +239,7 @@ class SkpdBapController extends Controller
             (int) $attributes['online_usage_count'],
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP Pemakaian berhasil diperbarui.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP SKPD berhasil diperbarui.']);
 
         return to_route('baps.show', $updatedBap);
     }
@@ -228,13 +253,13 @@ class SkpdBapController extends Controller
 
         $submittedBap = $submitBap->handle($this->actor($request), $bap);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'BAP Pemakaian diajukan dan menunggu verifikasi.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'BAP SKPD diajukan dan menunggu verifikasi.']);
 
         return to_route('baps.show', $submittedBap);
     }
 
     /**
-     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool}}
+     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, create_cancellation: bool}}
      */
     private function bapData(User $actor, Bap $bap): array
     {
@@ -254,6 +279,7 @@ class SkpdBapController extends Controller
             'can' => [
                 'edit' => $actor->can('update-bap', $bap),
                 'submit' => $actor->can('submit-bap', $bap),
+                'create_cancellation' => $actor->can('create-bap-cancellation', $bap),
             ],
         ];
     }
@@ -276,11 +302,12 @@ class SkpdBapController extends Controller
     private function auditLabel(string $event): string
     {
         return match ($event) {
-            'bap.created' => 'BAP Pemakaian dibuat',
+            'bap.created' => 'BAP SKPD dibuat',
             'bap.updated' => 'Draft BAP diperbarui',
-            'bap.submitted' => 'BAP Pemakaian diajukan',
+            'bap.submitted' => 'BAP SKPD diajukan',
             'bap_usage_segments.created' => 'Usage segment BAP dicatat',
             'bap_usage_segments.updated' => 'Usage segment BAP diperbarui',
+            'bap_cancellation.recorded' => 'Nomeratur batal/rusak dicatat',
             default => 'Perubahan BAP',
         };
     }

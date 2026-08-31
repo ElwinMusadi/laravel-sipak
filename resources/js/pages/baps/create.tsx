@@ -23,11 +23,11 @@ export default function CreateBap({
 }: Props) {
     return (
         <>
-            <Head title="Buat BAP Pemakaian" />
+            <Head title="Buat BAP SKPD" />
 
             <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
                 <Heading
-                    title="Buat BAP Pemakaian"
+                    title="Buat BAP SKPD"
                     description="Catat pemakaian aktual setelah pelayanan Loket selesai. Total selalu dihitung dari range nomeratur."
                 />
 
@@ -45,7 +45,7 @@ export default function CreateBap({
 
 CreateBap.layout = {
     breadcrumbs: [
-        { title: 'BAP Pemakaian', href: index() },
+        { title: 'BAP SKPD', href: index() },
         { title: 'Buat BAP', href: create() },
     ],
 };

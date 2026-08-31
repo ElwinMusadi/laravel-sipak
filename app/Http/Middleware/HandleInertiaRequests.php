@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
                     'manageSkpdInventory' => $request->user()?->can('manage-skpd-inventory') ?? false,
                     'viewBaps' => $request->user()?->can('view-baps') ?? false,
                     'createBap' => $request->user()?->can('create-bap') ?? false,
+                    'viewBapCancellations' => $request->user()?->can('view-bap-cancellations') ?? false,
                 ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

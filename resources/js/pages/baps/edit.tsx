@@ -33,7 +33,7 @@ export default function EditBap({ bap }: Props) {
 
 EditBap.layout = {
     breadcrumbs: [
-        { title: 'BAP Pemakaian', href: index() },
+        { title: 'BAP SKPD', href: index() },
         { title: 'Detail BAP', href: index() },
         { title: 'Ubah draft', href: index() },
     ],

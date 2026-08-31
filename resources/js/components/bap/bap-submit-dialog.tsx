@@ -36,7 +36,7 @@ export function BapSubmitDialog({ bap }: Props) {
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Ajukan BAP Pemakaian?</DialogTitle>
+                    <DialogTitle>Ajukan BAP SKPD?</DialogTitle>
                     <DialogDescription>
                         Setelah diajukan, data Loket, tanggal, nomeratur, total,
                         dan pemakaian online menjadi read-only hingga workflow

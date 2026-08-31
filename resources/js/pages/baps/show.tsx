@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, History, Pencil } from 'lucide-react';
+import { ArrowLeft, FileWarning, History, Pencil } from 'lucide-react';
 import {
     BapStatusBadge,
     type BapStatus,
@@ -15,6 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { create as createCancellation } from '@/routes/baps/cancellations';
+import { show as showCancellation } from '@/routes/bap-cancellations';
 import { edit, index } from '@/routes/baps';
 
 type Props = {
@@ -31,7 +33,7 @@ type Props = {
         created_by: string;
         created_at: string;
         submitted_at: string | null;
-        can: { edit: boolean; submit: boolean };
+        can: { edit: boolean; submit: boolean; create_cancellation: boolean };
         segments: {
             id: number;
             allocation_id: number;
@@ -40,6 +42,19 @@ type Props = {
             numerator_end: number;
             quantity: number;
         }[];
+        cancellations: {
+            items: {
+                id: number;
+                numerator: number;
+                reason: 'cancelled' | 'damaged';
+                reason_label: string;
+                description: string | null;
+                created_by: string;
+                created_at: string;
+            }[];
+            quantity: number;
+            normal_usage_quantity: number;
+        };
         timeline: {
             id: number;
             event: string;
@@ -52,7 +67,7 @@ type Props = {
 export default function ShowBap({ bap }: Props) {
     return (
         <>
-            <Head title={`BAP Pemakaian #${bap.id}`} />
+            <Head title={`BAP SKPD #${bap.id}`} />
 
             <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -65,7 +80,7 @@ export default function ShowBap({ bap }: Props) {
                         </Button>
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-semibold tracking-tight">
-                                BAP Pemakaian #{bap.id}
+                                BAP SKPD #{bap.id}
                             </h1>
                             <BapStatusBadge status={bap.status} />
                         </div>
@@ -86,6 +101,14 @@ export default function ShowBap({ bap }: Props) {
                             </Button>
                         ) : null}
                         {bap.can.submit ? <BapSubmitDialog bap={bap} /> : null}
+                        {bap.can.create_cancellation ? (
+                            <Button asChild>
+                                <Link href={createCancellation(bap.id)}>
+                                    <FileWarning data-icon="inline-start" />
+                                    Catat batal/rusak
+                                </Link>
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
 
@@ -174,12 +197,108 @@ export default function ShowBap({ bap }: Props) {
                 </section>
 
                 <Card>
+                    <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+                        <div className="grid gap-1">
+                            <CardTitle>Batal / Rusak</CardTitle>
+                            <p className="text-muted-foreground text-sm">
+                                Klasifikasi nomeratur yang tetap dihitung
+                                sebagai pemakaian BAP.
+                            </p>
+                        </div>
+                        <p className="text-muted-foreground text-sm tabular-nums">
+                            {formatQuantity(bap.cancellations.quantity)} dari{' '}
+                            {formatQuantity(bap.total_usage)} set
+                        </p>
+                    </CardHeader>
+                    <CardContent className="grid gap-4">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            <SummaryValue
+                                label="Total pemakaian"
+                                value={`${formatQuantity(bap.total_usage)} set`}
+                            />
+                            <SummaryValue
+                                label="Batal/rusak"
+                                value={`${formatQuantity(bap.cancellations.quantity)} set`}
+                            />
+                            <SummaryValue
+                                label="Pemakaian normal"
+                                value={`${formatQuantity(bap.cancellations.normal_usage_quantity)} set`}
+                            />
+                        </div>
+
+                        {bap.cancellations.items.length === 0 ? (
+                            <p className="text-muted-foreground text-sm">
+                                Belum ada nomeratur batal atau rusak pada BAP
+                                ini.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-2xl text-sm">
+                                    <thead className="text-muted-foreground border-b text-left">
+                                        <tr>
+                                            <th className="px-2 py-3 font-medium">
+                                                Nomeratur
+                                            </th>
+                                            <th className="px-2 py-3 font-medium">
+                                                Klasifikasi
+                                            </th>
+                                            <th className="px-2 py-3 font-medium">
+                                                Keterangan singkat
+                                            </th>
+                                            <th className="px-2 py-3 font-medium">
+                                                Dicatat oleh
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {bap.cancellations.items.map(
+                                            (cancellation) => (
+                                                <tr key={cancellation.id}>
+                                                    <td className="px-2 py-3 font-mono text-xs whitespace-nowrap">
+                                                        <Link
+                                                            href={showCancellation(
+                                                                cancellation.id,
+                                                            )}
+                                                            className="font-medium underline-offset-4 hover:underline"
+                                                        >
+                                                            {formatNomeratur(
+                                                                cancellation.numerator,
+                                                            )}
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        {
+                                                            cancellation.reason_label
+                                                        }
+                                                    </td>
+                                                    <td className="max-w-sm px-2 py-3">
+                                                        <span className="line-clamp-2">
+                                                            {cancellation.description ??
+                                                                '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        {
+                                                            cancellation.created_by
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            ),
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
                     <CardHeader>
                         <CardTitle>Usage segment</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[38rem] text-sm">
+                            <table className="w-full min-w-152 text-sm">
                                 <thead className="text-muted-foreground border-b text-left">
                                     <tr>
                                         <th className="px-2 py-3 font-medium">
@@ -260,6 +379,15 @@ export default function ShowBap({ bap }: Props) {
     );
 }
 
+function SummaryValue({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="bg-muted rounded-xl p-4">
+            <p className="text-muted-foreground text-sm">{label}</p>
+            <p className="mt-1 font-semibold tabular-nums">{value}</p>
+        </div>
+    );
+}
+
 function DetailRow({
     label,
     value,
@@ -283,7 +411,7 @@ function DetailRow({
 
 ShowBap.layout = {
     breadcrumbs: [
-        { title: 'BAP Pemakaian', href: index() },
+        { title: 'BAP SKPD', href: index() },
         { title: 'Detail BAP', href: index() },
     ],
 };

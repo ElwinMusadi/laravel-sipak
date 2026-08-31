@@ -30,7 +30,7 @@ export function RecentBaps({ items }: { items: readonly RecentBap[] }) {
             <CardContent className="overflow-x-auto px-0">
                 {items.length === 0 ? (
                     <EmptyState
-                        title="Belum ada BAP Pemakaian."
+                        title="Belum ada BAP SKPD."
                         description="BAP yang dibuat pada scope Anda akan muncul di sini."
                     />
                 ) : (

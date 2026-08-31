@@ -23,6 +23,7 @@ export type Auth = {
         manageSkpdInventory: boolean;
         viewBaps: boolean;
         createBap: boolean;
+        viewBapCancellations: boolean;
     };
 };
 

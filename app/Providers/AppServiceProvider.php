@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\BapStatus;
 use App\Models\Bap;
+use App\Models\BapCancellation;
 use App\Models\SkpdAllocation;
 use App\Models\User;
 use App\SkpdAllocationStatus;
@@ -93,8 +94,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-all-baps', fn (User $user): bool => $this->canViewAllBaps($user));
 
-        Gate::define('view-bap', fn (User $user, Bap $bap): bool => $this->canViewAllBaps($user)
-            || ($user->role === UserRole::PetugasLoket && $user->loket_id === $bap->loket_id));
+        Gate::define('view-bap', fn (User $user, Bap $bap): bool => $this->canViewBap($user, $bap));
 
         Gate::define('create-bap', fn (User $user): bool => $user->role === UserRole::PetugasLoket
             && $user->loket_id !== null);
@@ -107,6 +107,21 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('submit-bap', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasLoket
             && $user->loket_id === $bap->loket_id
             && $bap->status === BapStatus::Draft);
+
+        Gate::define('view-bap-cancellations', fn (User $user): bool => $user->can('view-baps'));
+
+        Gate::define('view-bap-cancellation', fn (User $user, BapCancellation $cancellation): bool => $this->canViewBap($user, $cancellation->bap));
+
+        Gate::define('create-bap-cancellation', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasLoket
+            && $user->loket_id === $bap->loket_id
+            && $user->id === $bap->created_by
+            && $bap->status === BapStatus::Draft);
+    }
+
+    private function canViewBap(User $user, Bap $bap): bool
+    {
+        return $this->canViewAllBaps($user)
+            || ($user->role === UserRole::PetugasLoket && $user->loket_id === $bap->loket_id);
     }
 
     private function canViewAllBaps(User $user): bool

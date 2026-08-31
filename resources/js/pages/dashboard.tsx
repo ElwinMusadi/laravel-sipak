@@ -22,7 +22,7 @@ export default function Dashboard({ dashboard: dashboardData }: Props) {
                         Selamat datang, {auth.user?.name ?? 'Pengguna'}
                     </h1>
                     <p className="text-muted-foreground max-w-2xl text-sm text-pretty">
-                        Prioritaskan BAP Pemakaian yang membutuhkan tindak
+                        Prioritaskan BAP SKPD yang membutuhkan tindak
                         lanjut.
                     </p>
                 </section>

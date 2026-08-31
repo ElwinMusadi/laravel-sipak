@@ -1,259 +1,229 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Plus, Search, X } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import { AllocationStatusBadge } from '@/components/allocation/allocation-status-badge';
-import { EmptyState } from '@/components/app/empty-state';
+import { Head, Link, router } from "@inertiajs/react";
+import { Eye, Plus, Search, X } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { AllocationStatusBadge } from "@/components/allocation/allocation-status-badge";
+import { EmptyState } from "@/components/app/empty-state";
 import {
-    formatDateTime,
-    formatQuantity,
-    formatRange,
-} from '@/components/inventory/format';
-import { Pagination } from '@/components/inventory/pagination';
-import type { PaginationLink } from '@/components/inventory/types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+  formatDateTime,
+  formatQuantity,
+  formatRange,
+} from "@/components/inventory/format";
+import { Pagination } from "@/components/inventory/pagination";
+import type { PaginationLink } from "@/components/inventory/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { create, index, show } from '@/routes/skpd/allocations';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { create, index, show } from "@/routes/skpd/allocations";
 
-type AllocationStatus = 'pending' | 'accepted' | 'completed' | 'cancelled';
+type AllocationStatus = "pending" | "accepted" | "completed" | "cancelled";
 
 type Allocation = {
-    id: number;
-    box: { id: number; box_number: string };
-    loket: { id: number; name: string };
-    numerator_start: number;
-    numerator_end: number;
-    quantity: number;
-    used_quantity: number;
-    remaining_quantity: number;
-    status: AllocationStatus;
-    created_by: string;
-    created_at: string;
-    accepted_by: string | null;
-    accepted_at: string | null;
-    can: { accept: boolean; cancel: boolean };
+  id: number;
+  box: { id: number; box_number: string };
+  loket: { id: number; name: string };
+  numerator_start: number;
+  numerator_end: number;
+  quantity: number;
+  used_quantity: number;
+  remaining_quantity: number;
+  status: AllocationStatus;
+  created_by: string;
+  created_at: string;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  can: { accept: boolean; cancel: boolean };
 };
 
 type Props = {
-    allocations: {
-        data: Allocation[];
-        links: PaginationLink[];
-        from: number | null;
-        to: number | null;
-        total: number;
-    };
-    filters: { search?: string; status?: AllocationStatus };
-    can: { create: boolean };
+  allocations: {
+    data: Allocation[];
+    links: PaginationLink[];
+    from: number | null;
+    to: number | null;
+    total: number;
+  };
+  filters: { search?: string; status?: AllocationStatus };
+  can: { create: boolean };
 };
 
 export default function AllocationIndex({ allocations, filters, can }: Props) {
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [status, setStatus] = useState(filters.status ?? '');
+  const [search, setSearch] = useState(filters.search ?? "");
+  const [status, setStatus] = useState(filters.status ?? "");
 
-    const applyFilters = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+  const applyFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-        router.get(
-            index.url(),
-            { search: search || undefined, status: status || undefined },
-            { preserveState: true, replace: true },
-        );
-    };
-
-    const resetFilters = () => {
-        setSearch('');
-        setStatus('');
-        router.get(index.url(), {}, { preserveState: true, replace: true });
-    };
-
-    return (
-        <>
-            <Head title="Distribusi / Alokasi" />
-
-            <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Distribusi / Alokasi SKPD
-                        </h1>
-                        <p className="text-muted-foreground max-w-2xl text-sm">
-                            Pantau reservation, handover, dan persediaan
-                            administratif Loket.
-                        </p>
-                    </div>
-                    {can.create ? (
-                        <Button asChild>
-                            <Link href={create()}>
-                                <Plus />
-                                Buat alokasi
-                            </Link>
-                        </Button>
-                    ) : null}
-                </div>
-
-                <Card>
-                    <CardContent>
-                        <form
-                            onSubmit={applyFilters}
-                            className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_auto]"
-                        >
-                            <div className="relative">
-                                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-                                <Input
-                                    value={search}
-                                    onChange={(event) =>
-                                        setSearch(event.target.value)
-                                    }
-                                    className="pl-9"
-                                    placeholder="Cari nomor Box atau Loket"
-                                />
-                            </div>
-                            <select
-                                value={status}
-                                onChange={(event) =>
-                                    setStatus(event.target.value)
-                                }
-                                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                                aria-label="Filter status alokasi"
-                            >
-                                <option value="">Semua status</option>
-                                <option value="pending">
-                                    Menunggu handover
-                                </option>
-                                <option value="accepted">Diterima</option>
-                                <option value="completed">
-                                    Selesai digunakan
-                                </option>
-                                <option value="cancelled">Dibatalkan</option>
-                            </select>
-                            <div className="flex gap-2">
-                                <Button type="submit">Terapkan</Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={resetFilters}
-                                    aria-label="Reset filter"
-                                >
-                                    <X />
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-0">
-                        {allocations.data.length === 0 ? (
-                            <EmptyState
-                                title="Belum ada distribusi SKPD."
-                                description="Alokasi yang dibuat Bendahara Barang akan tampil pada daftar ini."
-                            />
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Box</TableHead>
-                                            <TableHead>Loket</TableHead>
-                                            <TableHead>Range</TableHead>
-                                            <TableHead>Quantity</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Dibuat</TableHead>
-                                            <TableHead>Handover</TableHead>
-                                            <TableHead className="text-right">
-                                                Aksi
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {allocations.data.map((allocation) => (
-                                            <TableRow key={allocation.id}>
-                                                <TableCell className="font-medium">
-                                                    {allocation.box.box_number}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {allocation.loket.name}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs whitespace-nowrap">
-                                                    {formatRange(
-                                                        allocation.numerator_start,
-                                                        allocation.numerator_end,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {formatQuantity(
-                                                        allocation.quantity,
-                                                    )}
-                                                    <p className="text-muted-foreground text-xs">
-                                                        Sisa{' '}
-                                                        {formatQuantity(
-                                                            allocation.remaining_quantity,
-                                                        )}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <AllocationStatusBadge
-                                                        status={
-                                                            allocation.status
-                                                        }
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap">
-                                                    {formatDateTime(
-                                                        allocation.created_at,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {allocation.accepted_at
-                                                        ? `${allocation.accepted_by ?? '—'} · ${formatDateTime(allocation.accepted_at)}`
-                                                        : 'Belum diterima'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={show(
-                                                                allocation.id,
-                                                            )}
-                                                            aria-label={`Detail alokasi ${allocation.id}`}
-                                                        >
-                                                            <Eye />
-                                                        </Link>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="flex flex-col justify-between gap-3 text-sm sm:flex-row sm:items-center">
-                    <p className="text-muted-foreground">
-                        Menampilkan {allocations.from ?? 0}–
-                        {allocations.to ?? 0} dari {allocations.total} alokasi
-                    </p>
-                    <Pagination links={allocations.links} />
-                </div>
-            </main>
-        </>
+    router.get(
+      index.url(),
+      { search: search || undefined, status: status || undefined },
+      { preserveState: true, replace: true },
     );
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatus("");
+    router.get(index.url(), {}, { preserveState: true, replace: true });
+  };
+
+  return (
+    <>
+      <Head title="Distribusi / Alokasi" />
+
+      <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Distribusi / Alokasi SKPD
+            </h1>
+            <p className="text-muted-foreground max-w-2xl text-sm">
+              Pantau reservation, handover, dan persediaan administratif Loket.
+            </p>
+          </div>
+          {can.create ? (
+            <Button asChild>
+              <Link href={create()}>
+                <Plus />
+                Buat alokasi
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+
+        <Card>
+          <CardContent>
+            <form
+              onSubmit={applyFilters}
+              className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_auto]"
+            >
+              <div className="relative">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-9"
+                  placeholder="Cari nomor Box atau Loket"
+                />
+              </div>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                aria-label="Filter status alokasi"
+              >
+                <option value="">Semua status</option>
+                <option value="pending">Menunggu handover</option>
+                <option value="accepted">Diterima</option>
+                <option value="completed">Selesai digunakan</option>
+                <option value="cancelled">Dibatalkan</option>
+              </select>
+              <div className="flex gap-2">
+                <Button type="submit">Terapkan</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={resetFilters}
+                  aria-label="Reset filter"
+                >
+                  <X />
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-0">
+            {allocations.data.length === 0 ? (
+              <EmptyState
+                title="Belum ada distribusi SKPD."
+                description="Alokasi yang dibuat Bendahara Barang akan tampil pada daftar ini."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Box</TableHead>
+                      <TableHead>Loket</TableHead>
+                      <TableHead>Range</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Dibuat</TableHead>
+                      <TableHead>Handover</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allocations.data.map((allocation) => (
+                      <TableRow key={allocation.id}>
+                        <TableCell className="font-medium">
+                          {allocation.box.box_number}
+                        </TableCell>
+                        <TableCell>{allocation.loket.name}</TableCell>
+                        <TableCell className="font-mono text-xs whitespace-nowrap">
+                          {formatRange(
+                            allocation.numerator_start,
+                            allocation.numerator_end,
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {formatQuantity(allocation.quantity)}
+                          <p className="text-muted-foreground text-xs">
+                            Sisa {formatQuantity(allocation.remaining_quantity)}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <AllocationStatusBadge status={allocation.status} />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDateTime(allocation.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          {allocation.accepted_at
+                            ? `${allocation.accepted_by ?? "—"} · ${formatDateTime(allocation.accepted_at)}`
+                            : "Belum diterima"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link
+                              href={show(allocation.id)}
+                              aria-label={`Detail alokasi ${allocation.id}`}
+                            >
+                              <Eye />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col justify-between gap-3 text-sm sm:flex-row sm:items-center">
+          <p className="text-muted-foreground">
+            Menampilkan {allocations.from ?? 0}–{allocations.to ?? 0} dari{" "}
+            {allocations.total} alokasi
+          </p>
+          <Pagination links={allocations.links} />
+        </div>
+      </main>
+    </>
+  );
 }
 
 AllocationIndex.layout = {
-    breadcrumbs: [{ title: 'Distribusi / Alokasi', href: index() }],
+  breadcrumbs: [{ title: "Distribusi / Alokasi", href: index() }],
 };

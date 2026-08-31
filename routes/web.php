@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SkpdAllocationController;
+use App\Http\Controllers\SkpdBapCancellationController;
 use App\Http\Controllers\SkpdBapController;
 use App\Http\Controllers\SkpdBoxController;
 use App\Http\Controllers\SkpdInventoryController;
@@ -12,6 +13,14 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::middleware('can:view-bap-cancellations')
+        ->prefix('bap-cancellations')
+        ->name('bap-cancellations.')
+        ->group(function (): void {
+            Route::get('/', [SkpdBapCancellationController::class, 'index'])->name('index');
+            Route::get('{bapCancellation}', [SkpdBapCancellationController::class, 'show'])->name('show');
+        });
 
     Route::middleware('can:view-baps')
         ->prefix('baps')
@@ -24,6 +33,12 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::post('/', [SkpdBapController::class, 'store'])
                 ->middleware('can:create-bap')
                 ->name('store');
+            Route::get('{bap}/cancellations/create', [SkpdBapCancellationController::class, 'create'])
+                ->middleware('can:create-bap-cancellation,bap')
+                ->name('cancellations.create');
+            Route::post('{bap}/cancellations', [SkpdBapCancellationController::class, 'store'])
+                ->middleware('can:create-bap-cancellation,bap')
+                ->name('cancellations.store');
             Route::get('{bap}', [SkpdBapController::class, 'show'])->name('show');
             Route::get('{bap}/edit', [SkpdBapController::class, 'edit'])->name('edit');
             Route::put('{bap}', [SkpdBapController::class, 'update'])->name('update');
