@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SkpdAllocationController;
 use App\Http\Controllers\SkpdBapCancellationController;
 use App\Http\Controllers\SkpdBapController;
+use App\Http\Controllers\SkpdBapVerificationController;
 use App\Http\Controllers\SkpdBoxController;
 use App\Http\Controllers\SkpdInventoryController;
 use App\Http\Controllers\UserManagementController;
@@ -43,6 +44,20 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('{bap}/edit', [SkpdBapController::class, 'edit'])->name('edit');
             Route::put('{bap}', [SkpdBapController::class, 'update'])->name('update');
             Route::post('{bap}/submit', [SkpdBapController::class, 'submit'])->name('submit');
+        });
+
+    Route::middleware('can:view-bap-verifications-phase-1')
+        ->prefix('bap-verifications')
+        ->name('bap-verifications.')
+        ->group(function (): void {
+            Route::get('/', [SkpdBapVerificationController::class, 'index'])->name('index');
+            Route::get('{bap}', [SkpdBapVerificationController::class, 'show'])->name('show');
+            Route::post('{bap}/start', [SkpdBapVerificationController::class, 'start'])
+                ->middleware('can:start-bap-verification-phase-1,bap')
+                ->name('start');
+            Route::post('{bap}/complete', [SkpdBapVerificationController::class, 'complete'])
+                ->middleware('can:complete-bap-verification-phase-1')
+                ->name('complete');
         });
 });
 

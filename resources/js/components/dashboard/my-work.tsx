@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { ArrowUpRight, ClipboardList } from 'lucide-react';
 import {
     Card,
@@ -27,9 +28,10 @@ export function MyWork({ items }: { items: readonly DashboardWorkItem[] }) {
             </CardHeader>
             <CardContent className="divide-y p-0">
                 {items.map((item) => (
-                    <div
+                    <Link
                         key={item.id}
-                        className="flex items-start gap-3 px-6 py-4"
+                        href={item.href ?? '#'}
+                        className="hover:bg-muted/50 flex items-start gap-3 px-6 py-4 transition-colors"
                     >
                         <span className="bg-muted text-foreground flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold tabular-nums">
                             {item.count}
@@ -47,7 +49,7 @@ export function MyWork({ items }: { items: readonly DashboardWorkItem[] }) {
                             aria-hidden="true"
                             className="text-muted-foreground mt-1 size-4 shrink-0"
                         />
-                    </div>
+                    </Link>
                 ))}
             </CardContent>
         </Card>

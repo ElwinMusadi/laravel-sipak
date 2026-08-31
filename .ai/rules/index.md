@@ -5,3 +5,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | app/Actions/SkpdInventory/** | .ai/rules/skpd-inventory.md |
+| app/Actions/SkpdVerification/** | .ai/rules/skpd-verification.md |

@@ -1,4 +1,4 @@
-import { Clock3, FileText } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, Clock3, FileText } from 'lucide-react';
 import {
     Card,
     CardContent,
@@ -11,6 +11,8 @@ import type { DashboardMetric } from './dashboard-data';
 const metricIcons = {
     today: FileText,
     waiting: Clock3,
+    in_progress: ClipboardCheck,
+    discrepancy: AlertTriangle,
 };
 
 export function DashboardMetrics({

@@ -116,6 +116,13 @@ class AppServiceProvider extends ServiceProvider
             && $user->loket_id === $bap->loket_id
             && $user->id === $bap->created_by
             && $bap->status === BapStatus::Draft);
+
+        Gate::define('view-bap-verifications-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
+
+        Gate::define('start-bap-verification-phase-1', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasPenetapan
+            && $bap->status === BapStatus::Submitted);
+
+        Gate::define('complete-bap-verification-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
     }
 
     private function canViewBap(User $user, Bap $bap): bool

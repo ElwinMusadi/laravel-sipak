@@ -138,8 +138,14 @@ export default function BapIndex({ baps, filters, can }: Props) {
                   <SelectItem value="all">Semua status</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="waiting_verification">
-                    Menunggu verifikasi
+                  <SelectItem value="under_verification">
+                    Sedang diverifikasi Tahap 1
+                  </SelectItem>
+                  <SelectItem value="needs_clarification">
+                    Perlu klarifikasi
+                  </SelectItem>
+                  <SelectItem value="waiting_verification_phase_2">
+                    Menunggu verifikasi Tahap 2
                   </SelectItem>
                 </SelectContent>
               </Select>

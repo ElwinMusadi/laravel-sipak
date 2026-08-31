@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as bapCancellationsIndex } from '@/routes/bap-cancellations';
+import { index as bapVerificationsIndex } from '@/routes/bap-verifications';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as usersIndex } from '@/routes/users';
 
@@ -26,7 +27,8 @@ type NavigationHref = NonNullable<InertiaLinkProps['href']>;
 export type ApplicationPermission =
     | 'manageUsers'
     | 'viewBaps'
-    | 'viewBapCancellations';
+    | 'viewBapCancellations'
+    | 'viewBapVerificationsPhase1';
 
 export type ApplicationNavigationItem = {
     title: string;
@@ -108,7 +110,9 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'Verifikasi Tahap 1',
                 icon: BadgeCheck,
-                availability: 'planned',
+                href: bapVerificationsIndex(),
+                availability: 'available',
+                requiredPermission: 'viewBapVerificationsPhase1',
             },
             {
                 title: 'Approval Tahap 1',

@@ -114,8 +114,9 @@ export default function ShowBap({ bap }: Props) {
 
                 {bap.status !== 'draft' ? (
                     <p className="border-primary/25 bg-primary/8 rounded-xl border p-4 text-sm">
-                        BAP ini telah diajukan dan bersifat read-only. Tahap
-                        verifikasi belum diimplementasikan pada Phase 06.
+                        BAP ini bersifat read-only setelah diajukan. Status
+                        verifikasi dan riwayat pemeriksaannya tersedia pada
+                        lifecycle BAP.
                     </p>
                 ) : (
                     <p className="text-muted-foreground rounded-xl border p-4 text-sm">

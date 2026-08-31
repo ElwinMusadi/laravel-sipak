@@ -72,6 +72,26 @@ class Bap extends Model
     }
 
     /**
+     * Get verification attempts recorded for this BAP.
+     *
+     * @return HasMany<BapVerification, $this>
+     */
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(BapVerification::class);
+    }
+
+    /**
+     * Get minimum clarification requests associated with this BAP.
+     *
+     * @return HasMany<BapClarificationRequest, $this>
+     */
+    public function clarificationRequests(): HasMany
+    {
+        return $this->hasMany(BapClarificationRequest::class);
+    }
+
+    /**
      * Get the audit entries for this BAP.
      *
      * @return MorphMany<AuditLog, $this>

@@ -99,6 +99,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Get BAP verification attempts performed by the user.
+     *
+     * @return HasMany<BapVerification, $this>
+     */
+    public function bapVerifications(): HasMany
+    {
+        return $this->hasMany(BapVerification::class, 'verifier_id');
+    }
+
+    /**
+     * Get clarification requests submitted by the user.
+     *
+     * @return HasMany<BapClarificationRequest, $this>
+     */
+    public function requestedBapClarifications(): HasMany
+    {
+        return $this->hasMany(BapClarificationRequest::class, 'requested_by');
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
