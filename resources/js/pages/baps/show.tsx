@@ -15,6 +15,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { create as createCancellation } from '@/routes/baps/cancellations';
 import { show as showCancellation } from '@/routes/bap-cancellations';
 import { edit, index } from '@/routes/baps';
@@ -234,28 +242,28 @@ export default function ShowBap({ bap }: Props) {
                             </p>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-2xl text-sm">
-                                    <thead className="text-muted-foreground border-b text-left">
-                                        <tr>
-                                            <th className="px-2 py-3 font-medium">
+                                <Table className="w-full min-w-2xl text-sm">
+                                    <TableHeader className="text-muted-foreground border-b text-left">
+                                        <TableRow>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Nomeratur
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Klasifikasi
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Keterangan singkat
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Dicatat oleh
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y">
                                         {bap.cancellations.items.map(
                                             (cancellation) => (
-                                                <tr key={cancellation.id}>
-                                                    <td className="px-2 py-3 font-mono text-xs whitespace-nowrap">
+                                                <TableRow key={cancellation.id}>
+                                                    <TableCell className="px-2 py-3 font-mono text-xs whitespace-nowrap">
                                                         <Link
                                                             href={showCancellation(
                                                                 cancellation.id,
@@ -266,28 +274,28 @@ export default function ShowBap({ bap }: Props) {
                                                                 cancellation.numerator,
                                                             )}
                                                         </Link>
-                                                    </td>
-                                                    <td className="px-2 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-2 py-3">
                                                         {
                                                             cancellation.reason_label
                                                         }
-                                                    </td>
-                                                    <td className="max-w-sm px-2 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="max-w-sm px-2 py-3">
                                                         <span className="line-clamp-2">
                                                             {cancellation.description ??
                                                                 '—'}
                                                         </span>
-                                                    </td>
-                                                    <td className="px-2 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-2 py-3">
                                                         {
                                                             cancellation.created_by
                                                         }
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ),
                                         )}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </CardContent>
@@ -299,48 +307,48 @@ export default function ShowBap({ bap }: Props) {
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-152 text-sm">
-                                <thead className="text-muted-foreground border-b text-left">
-                                    <tr>
-                                        <th className="px-2 py-3 font-medium">
+                            <Table className="w-full min-w-152 text-sm">
+                                <TableHeader className="text-muted-foreground border-b text-left">
+                                    <TableRow>
+                                        <TableHead className="px-2 py-3 font-medium">
                                             Allocation
-                                        </th>
-                                        <th className="px-2 py-3 font-medium">
+                                        </TableHead>
+                                        <TableHead className="px-2 py-3 font-medium">
                                             Box
-                                        </th>
-                                        <th className="px-2 py-3 font-medium">
+                                        </TableHead>
+                                        <TableHead className="px-2 py-3 font-medium">
                                             Nomeratur
-                                        </th>
-                                        <th className="px-2 py-3 text-right font-medium">
+                                        </TableHead>
+                                        <TableHead className="px-2 py-3 text-right font-medium">
                                             Quantity
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y">
                                     {bap.segments.map((segment) => (
-                                        <tr key={segment.id}>
-                                            <td className="px-2 py-3 tabular-nums">
+                                        <TableRow key={segment.id}>
+                                            <TableCell className="px-2 py-3 tabular-nums">
                                                 #{segment.allocation_id}
-                                            </td>
-                                            <td className="px-2 py-3 font-medium">
+                                            </TableCell>
+                                            <TableCell className="px-2 py-3 font-medium">
                                                 {segment.box_number}
-                                            </td>
-                                            <td className="px-2 py-3 font-mono text-xs whitespace-nowrap">
+                                            </TableCell>
+                                            <TableCell className="px-2 py-3 font-mono text-xs whitespace-nowrap">
                                                 {formatRange(
                                                     segment.numerator_start,
                                                     segment.numerator_end,
                                                 )}
-                                            </td>
-                                            <td className="px-2 py-3 text-right tabular-nums">
+                                            </TableCell>
+                                            <TableCell className="px-2 py-3 text-right tabular-nums">
                                                 {formatQuantity(
                                                     segment.quantity,
                                                 )}{' '}
                                                 set
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                     </CardContent>
                 </Card>

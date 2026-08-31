@@ -12,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
     InputOTP,
     InputOTPGroup,
@@ -116,18 +117,20 @@ function TwoFactorSetupStep({
                                 </div>
                             ) : (
                                 <>
-                                    <input
+                                    <Input
                                         type="text"
                                         readOnly
                                         value={manualSetupKey}
-                                        className="bg-background text-foreground h-full w-full p-3 outline-none"
+                                        className="bg-background text-foreground h-full w-full p-3 outline-none border-0 rounded-none shadow-none focus-visible:ring-0"
                                     />
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={() => copy(manualSetupKey)}
                                         className="border-border hover:bg-muted border-l px-3"
                                     >
                                         <IconComponent className="w-4" />
-                                    </button>
+                                    </Button>
                                 </>
                             )}
                         </div>

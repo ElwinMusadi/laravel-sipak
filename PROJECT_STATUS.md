@@ -134,17 +134,17 @@ Route Tahap 1 yang sudah ada tetap dipertahankan.
 
 - Tidak ada tabel verifikasi baru; schema Phase 08 mendukung stage Tahap 2.
 - Migration korektif `2026_08_31_091959_extend_bap_status_for_phase_two_verification` memperluas CHECK constraint MySQL dengan `under_verification_phase_2` dan `verified_phase_2` tanpa migrasi destruktif.
-- SQLite lokal tidak memakai CHECK constraint tersebut; migration tetap aman pada SQLite.
+- Migration telah diterapkan pada SQLite lokal; SQLite tidak memakai CHECK constraint tersebut sehingga migration tetap aman. Perilaku constraint dan lock pada MySQL target masih memerlukan verifikasi lingkungan MySQL.
 
 ## Testing
 
 ### Feature Test
 
-PASS — `php artisan test --compact`: 116 test, 779 assertion. Regresi fokus BAP, cancellation, dashboard, Verifikasi Tahap 1, dan Verifikasi Tahap 2 juga PASS: 46 test, 442 assertion.
+PASS — `php artisan test --compact`: 116 test, 782 assertion. Regresi fokus BAP, cancellation, dashboard, Verifikasi Tahap 1, dan Verifikasi Tahap 2 juga PASS: 46 test, 442 assertion.
 
 ### npm run check
 
-FAIL (pre-existing, di luar scope) — `npm run check` masih menemukan sembilan berkas formatting lama: `app-sidebar-header.tsx`, `nav-user.tsx`, `user-info.tsx`, `baps/index.tsx`, `dashboard.tsx`, `skpd/allocations/create.tsx`, `skpd/allocations/index.tsx`, `skpd/boxes/index.tsx`, dan `users/index.tsx`. Tiga berkas baru/berubah khusus Phase 09 (`PROJECT_STATUS.md`, queue, detail) telah diperiksa terpisah tanpa lint/format error.
+FAIL (di luar scope) — pada worktree saat ini, `npm run check` menemukan 12 berkas formatting: `app.tsx`, `app-sidebar-header.tsx`, `nav-user.tsx`, `two-factor-setup-modal.tsx`, `user-info.tsx`, `auth/login.tsx`, `baps/index.tsx`, `dashboard.tsx`, `skpd/allocations/create.tsx`, `skpd/allocations/index.tsx`, `skpd/boxes/index.tsx`, dan `users/index.tsx`. Berkas Phase 09 yang disentuh (`PROJECT_STATUS.md`, queue, dan detail) telah diperiksa terpisah tanpa lint/format error; 12 berkas di luar scope tidak diubah.
 
 ### npm run types:check
 
@@ -168,7 +168,7 @@ PASS — `git diff --check`.
 
 ## Known Issues
 
-- `npm run check` pada Phase 08 masih gagal karena sembilan berkas formatting pre-existing di luar scope: `app-sidebar-header.tsx`, `nav-user.tsx`, `user-info.tsx`, `baps/index.tsx`, `dashboard.tsx`, `skpd/allocations/create.tsx`, `skpd/allocations/index.tsx`, `skpd/boxes/index.tsx`, dan `users/index.tsx`. Status ini harus diverifikasi kembali pada quality gate akhir.
+- `npm run check` pada worktree saat ini masih gagal karena 12 berkas formatting di luar scope: `app.tsx`, `app-sidebar-header.tsx`, `nav-user.tsx`, `two-factor-setup-modal.tsx`, `user-info.tsx`, `auth/login.tsx`, `baps/index.tsx`, `dashboard.tsx`, `skpd/allocations/create.tsx`, `skpd/allocations/index.tsx`, `skpd/boxes/index.tsx`, dan `users/index.tsx`.
 - Review browser manual desktop/mobile dan light/dark serta verifikasi MySQL target belum tersedia di lingkungan ini.
 
 ## Technical Debt

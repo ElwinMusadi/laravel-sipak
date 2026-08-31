@@ -9,6 +9,13 @@ import type { LoketOption } from "@/components/inventory/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Heading from "@/components/heading";
 import { create, index } from "@/routes/skpd/allocations";
 
@@ -69,25 +76,32 @@ export default function CreateAllocation({ boxes, lokets }: Props) {
                   <>
                     <div className="grid gap-2">
                       <Label htmlFor="skpd_box_id">Box SKPD</Label>
-                      <select
-                        id="skpd_box_id"
+                      <Select
                         name="skpd_box_id"
-                        value={boxId}
-                        onChange={(event) => setBoxId(event.target.value)}
-                        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                        aria-invalid={Boolean(errors.skpd_box_id)}
+                        value={boxId || "none"}
+                        onValueChange={(val) =>
+                          setBoxId(val === "none" ? "" : val)
+                        }
                       >
-                        <option value="">Pilih Box SKPD</option>
-                        {boxes.map((box) => (
-                          <option key={box.id} value={box.id}>
-                            {box.box_number} ·{" "}
-                            {formatRange(
-                              box.numerator_start,
-                              box.numerator_end,
-                            )}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          id="skpd_box_id"
+                          aria-invalid={Boolean(errors.skpd_box_id)}
+                        >
+                          <SelectValue placeholder="Pilih Box SKPD" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Pilih Box SKPD</SelectItem>
+                          {boxes.map((box) => (
+                            <SelectItem key={box.id} value={box.id.toString()}>
+                              {box.box_number} ·{" "}
+                              {formatRange(
+                                box.numerator_start,
+                                box.numerator_end,
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <InputError message={errors.skpd_box_id} />
                     </div>
 
@@ -113,21 +127,31 @@ export default function CreateAllocation({ boxes, lokets }: Props) {
 
                     <div className="grid gap-2">
                       <Label htmlFor="loket_id">Loket penerima</Label>
-                      <select
-                        id="loket_id"
+                      <Select
                         name="loket_id"
-                        value={loketId}
-                        onChange={(event) => setLoketId(event.target.value)}
-                        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                        aria-invalid={Boolean(errors.loket_id)}
+                        value={loketId || "none"}
+                        onValueChange={(val) =>
+                          setLoketId(val === "none" ? "" : val)
+                        }
                       >
-                        <option value="">Pilih Loket</option>
-                        {lokets.map((loket) => (
-                          <option key={loket.id} value={loket.id}>
-                            {loket.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          id="loket_id"
+                          aria-invalid={Boolean(errors.loket_id)}
+                        >
+                          <SelectValue placeholder="Pilih Loket" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Pilih Loket</SelectItem>
+                          {lokets.map((loket) => (
+                            <SelectItem
+                              key={loket.id}
+                              value={loket.id.toString()}
+                            >
+                              {loket.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <InputError message={errors.loket_id} />
                     </div>
 

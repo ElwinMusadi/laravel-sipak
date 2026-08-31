@@ -14,6 +14,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
     create as createAllocation,
     show as allocationShow,
 } from '@/routes/skpd/allocations';
@@ -158,30 +166,30 @@ export default function ShowBox({ box, can }: Props) {
                             </p>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[45rem] text-sm">
-                                    <thead className="text-muted-foreground border-b text-left">
-                                        <tr>
-                                            <th className="px-2 py-3 font-medium">
+                                <Table className="w-full min-w-[45rem] text-sm">
+                                    <TableHeader className="text-muted-foreground border-b text-left">
+                                        <TableRow>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Loket
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Range
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Quantity
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Status
-                                            </th>
-                                            <th className="px-2 py-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="px-2 py-3 font-medium">
                                                 Diterima
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y">
                                         {box.allocations.map((allocation) => (
-                                            <tr key={allocation.id}>
-                                                <td className="px-2 py-3">
+                                            <TableRow key={allocation.id}>
+                                                <TableCell className="px-2 py-3">
                                                     <Link
                                                         href={allocationShow(
                                                             allocation.id,
@@ -194,14 +202,14 @@ export default function ShowBox({ box, can }: Props) {
                                                         Dibuat oleh{' '}
                                                         {allocation.created_by}
                                                     </p>
-                                                </td>
-                                                <td className="px-2 py-3 font-mono text-xs whitespace-nowrap">
+                                                </TableCell>
+                                                <TableCell className="px-2 py-3 font-mono text-xs whitespace-nowrap">
                                                     {formatRange(
                                                         allocation.numerator_start,
                                                         allocation.numerator_end,
                                                     )}
-                                                </td>
-                                                <td className="px-2 py-3">
+                                                </TableCell>
+                                                <TableCell className="px-2 py-3">
                                                     {formatQuantity(
                                                         allocation.quantity,
                                                     )}{' '}
@@ -212,23 +220,23 @@ export default function ShowBox({ box, can }: Props) {
                                                             allocation.remaining_quantity,
                                                         )}
                                                     </p>
-                                                </td>
-                                                <td className="px-2 py-3">
+                                                </TableCell>
+                                                <TableCell className="px-2 py-3">
                                                     <AllocationStatusBadge
                                                         status={
                                                             allocation.status
                                                         }
                                                     />
-                                                </td>
-                                                <td className="text-muted-foreground px-2 py-3">
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground px-2 py-3">
                                                     {allocation.accepted_at
                                                         ? `${allocation.accepted_by ?? '—'} · ${formatDateTime(allocation.accepted_at)}`
                                                         : 'Belum diterima'}
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </CardContent>

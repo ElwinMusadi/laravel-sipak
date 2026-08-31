@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -110,33 +117,44 @@ export default function BoxIndex({ boxes, filters, lokets, can }: Props) {
                   placeholder="Cari nomor Box"
                 />
               </div>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter status Box"
+              <Select
+                value={status || "all"}
+                onValueChange={(val) => setStatus(val === "all" ? "" : val)}
               >
-                <option value="">Semua status</option>
-                <option value="available">Tersedia</option>
-                <option value="partially_allocated">
-                  Dialokasikan sebagian
-                </option>
-                <option value="fully_allocated">Terdistribusi penuh</option>
-                <option value="depleted">Habis digunakan</option>
-              </select>
-              <select
-                value={loket}
-                onChange={(event) => setLoket(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter Loket"
+                <SelectTrigger aria-label="Filter status Box">
+                  <SelectValue placeholder="Semua status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="available">Tersedia</SelectItem>
+                  <SelectItem value="partially_allocated">
+                    Dialokasikan sebagian
+                  </SelectItem>
+                  <SelectItem value="fully_allocated">
+                    Terdistribusi penuh
+                  </SelectItem>
+                  <SelectItem value="depleted">Habis digunakan</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={loket || "all"}
+                onValueChange={(val) => setLoket(val === "all" ? "" : val)}
               >
-                <option value="">Semua Loket</option>
-                {lokets.map((loketOption) => (
-                  <option key={loketOption.id} value={loketOption.id}>
-                    {loketOption.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="Filter Loket">
+                  <SelectValue placeholder="Semua Loket" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Loket</SelectItem>
+                  {lokets.map((loketOption) => (
+                    <SelectItem
+                      key={loketOption.id.toString()}
+                      value={loketOption.id.toString()}
+                    >
+                      {loketOption.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="flex gap-2">
                 <Button type="submit">Terapkan</Button>
                 <Button

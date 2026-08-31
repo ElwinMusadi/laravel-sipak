@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -113,18 +120,21 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
                   placeholder="Cari nomor Box atau Loket"
                 />
               </div>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                aria-label="Filter status alokasi"
+              <Select
+                value={status || "all"}
+                onValueChange={(val) => setStatus(val === "all" ? "" : val)}
               >
-                <option value="">Semua status</option>
-                <option value="pending">Menunggu handover</option>
-                <option value="accepted">Diterima</option>
-                <option value="completed">Selesai digunakan</option>
-                <option value="cancelled">Dibatalkan</option>
-              </select>
+                <SelectTrigger aria-label="Filter status alokasi">
+                  <SelectValue placeholder="Semua status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="pending">Menunggu handover</SelectItem>
+                  <SelectItem value="accepted">Diterima</SelectItem>
+                  <SelectItem value="completed">Selesai digunakan</SelectItem>
+                  <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="flex gap-2">
                 <Button type="submit">Terapkan</Button>
                 <Button

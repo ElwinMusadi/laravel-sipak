@@ -32,6 +32,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import * as phaseOneRoutes from '@/routes/bap-verifications';
 import * as phaseTwoRoutes from '@/routes/bap-verifications-phase-2';
@@ -331,48 +339,48 @@ export default function ShowBapVerification({
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-155 text-sm">
-                                    <thead className="text-muted-foreground border-b text-left">
-                                        <tr>
-                                            <th className="pb-3 font-medium">
+                                <Table className="w-full min-w-155 text-sm">
+                                    <TableHeader className="text-muted-foreground border-b text-left">
+                                        <TableRow>
+                                            <TableHead className="pb-3 font-medium">
                                                 Box
-                                            </th>
-                                            <th className="pb-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="pb-3 font-medium">
                                                 Alokasi
-                                            </th>
-                                            <th className="pb-3 font-medium">
+                                            </TableHead>
+                                            <TableHead className="pb-3 font-medium">
                                                 Range
-                                            </th>
-                                            <th className="pb-3 text-right font-medium">
+                                            </TableHead>
+                                            <TableHead className="pb-3 text-right font-medium">
                                                 Jumlah
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y">
                                         {bap.segments.map((segment) => (
-                                            <tr key={segment.id}>
-                                                <td className="py-3">
+                                            <TableRow key={segment.id}>
+                                                <TableCell className="py-3">
                                                     {segment.box_number}
-                                                </td>
-                                                <td className="py-3 tabular-nums">
+                                                </TableCell>
+                                                <TableCell className="py-3 tabular-nums">
                                                     #{segment.allocation_id}
-                                                </td>
-                                                <td className="py-3 font-mono text-xs whitespace-nowrap">
+                                                </TableCell>
+                                                <TableCell className="py-3 font-mono text-xs whitespace-nowrap">
                                                     {formatRange(
                                                         segment.numerator_start,
                                                         segment.numerator_end,
                                                     )}
-                                                </td>
-                                                <td className="py-3 text-right tabular-nums">
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right tabular-nums">
                                                     {formatQuantity(
                                                         segment.quantity,
                                                     )}{' '}
                                                     set
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         </CardContent>
                     </Card>
@@ -388,43 +396,45 @@ export default function ShowBapVerification({
                                 </p>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-155 text-sm">
-                                        <thead className="text-muted-foreground border-b text-left">
-                                            <tr>
-                                                <th className="pb-3 font-medium">
+                                    <Table className="w-full min-w-155 text-sm">
+                                        <TableHeader className="text-muted-foreground border-b text-left">
+                                            <TableRow>
+                                                <TableHead className="pb-3 font-medium">
                                                     Nomeratur
-                                                </th>
-                                                <th className="pb-3 font-medium">
+                                                </TableHead>
+                                                <TableHead className="pb-3 font-medium">
                                                     Alasan
-                                                </th>
-                                                <th className="pb-3 font-medium">
+                                                </TableHead>
+                                                <TableHead className="pb-3 font-medium">
                                                     Keterangan
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y">
                                             {bap.cancellations.map(
                                                 (cancellation) => (
-                                                    <tr key={cancellation.id}>
-                                                        <td className="py-3 font-mono text-xs">
+                                                    <TableRow
+                                                        key={cancellation.id}
+                                                    >
+                                                        <TableCell className="py-3 font-mono text-xs">
                                                             {formatNomeratur(
                                                                 cancellation.numerator,
                                                             )}
-                                                        </td>
-                                                        <td className="py-3">
+                                                        </TableCell>
+                                                        <TableCell className="py-3">
                                                             {
                                                                 cancellation.reason_label
                                                             }
-                                                        </td>
-                                                        <td className="text-muted-foreground py-3">
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground py-3">
                                                             {cancellation.description ??
                                                                 '—'}
-                                                        </td>
-                                                    </tr>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 ),
                                             )}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             )}
                         </CardContent>
