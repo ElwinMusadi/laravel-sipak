@@ -27,6 +27,13 @@ class CreateSkpdAllocation
             $this->lockInventory();
 
             $lockedBox = SkpdBox::query()->lockForUpdate()->findOrFail($box->id);
+            $lockedLoket = Loket::query()->lockForUpdate()->findOrFail($loket->id);
+
+            if (! $lockedLoket->is_active) {
+                throw ValidationException::withMessages([
+                    'loket_id' => 'Loket tidak aktif dan tidak dapat menerima alokasi baru.',
+                ]);
+            }
 
             if ($numeratorStart < $lockedBox->numerator_start || $numeratorEnd > $lockedBox->numerator_end) {
                 throw ValidationException::withMessages([
@@ -43,7 +50,7 @@ class CreateSkpdAllocation
             $differentLoketExists = SkpdAllocation::query()
                 ->where('skpd_box_id', $lockedBox->id)
                 ->whereIn('status', $activeStatuses)
-                ->where('loket_id', '!=', $loket->id)
+                ->where('loket_id', '!=', $lockedLoket->id)
                 ->lockForUpdate()
                 ->exists();
 
@@ -69,7 +76,7 @@ class CreateSkpdAllocation
 
             $allocation = SkpdAllocation::create([
                 'skpd_box_id' => $lockedBox->id,
-                'loket_id' => $loket->id,
+                'loket_id' => $lockedLoket->id,
                 'numerator_start' => $numeratorStart,
                 'numerator_end' => $numeratorEnd,
                 'quantity' => $numeratorEnd - $numeratorStart + 1,

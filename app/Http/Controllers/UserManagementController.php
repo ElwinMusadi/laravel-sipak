@@ -12,7 +12,9 @@ use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,14 +33,15 @@ class UserManagementController extends Controller
         ]);
 
         $query = User::query()
-            ->select(['id', 'username', 'name', 'role', 'loket_id', 'is_active', 'last_login_at'])
+            ->select(['id', 'username', 'name', 'nip', 'role', 'loket_id', 'is_active', 'last_login_at'])
             ->with('loket:id,name');
 
         if ($search = $filters['search'] ?? null) {
             $query->where(function ($query) use ($search): void {
                 $query
                     ->where('username', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhere('nip', 'like', "%{$search}%");
             });
         }
 
@@ -82,13 +85,21 @@ class UserManagementController extends Controller
      */
     public function store(StoreUserRequest $request, RecordUserManagementAudit $audit): RedirectResponse
     {
-        $attributes = $this->userAttributes($request->validated());
-        $user = User::create([
-            ...$attributes,
-            'password' => $request->validated('password'),
-        ]);
+        $validated = $request->validated();
+        $actor = $this->actor($request);
+        $user = DB::transaction(function () use ($validated, $actor, $audit): User {
+            $attributes = $this->userAttributes($validated);
+            $this->ensureAssignedLoketIsActive($attributes['loket_id']);
 
-        $audit->created($this->actor($request), $user);
+            $user = User::create([
+                ...$attributes,
+                'password' => $validated['password'],
+            ]);
+
+            $audit->created($actor, $user);
+
+            return $user;
+        }, attempts: 3);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengguna berhasil dibuat.']);
 
@@ -122,12 +133,22 @@ class UserManagementController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user, RecordUserManagementAudit $audit): RedirectResponse
     {
-        $user->fill($this->userAttributes($request->validated()));
-        $changes = Arr::only($user->getDirty(), ['username', 'name', 'role', 'loket_id', 'is_active']);
-        $old = Arr::only($user->getRawOriginal(), array_keys($changes));
-        $user->save();
+        $validated = $request->validated();
+        $actor = $this->actor($request);
+        $user = DB::transaction(function () use ($validated, $actor, $audit, $user): User {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $attributes = $this->userAttributes($validated);
+            $this->ensureAssignedLoketIsActive($attributes['loket_id']);
 
-        $audit->updated($this->actor($request), $user, $old, $changes);
+            $lockedUser->fill($attributes);
+            $changes = Arr::only($lockedUser->getDirty(), ['username', 'name', 'nip', 'role', 'loket_id', 'is_active']);
+            $old = Arr::only($lockedUser->getRawOriginal(), array_keys($changes));
+            $lockedUser->save();
+
+            $audit->updated($actor, $lockedUser, $old, $changes);
+
+            return $lockedUser;
+        }, attempts: 3);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengguna berhasil diperbarui.']);
 
@@ -149,7 +170,7 @@ class UserManagementController extends Controller
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array{username: string, name: string, role: string, loket_id: int|null, is_active: bool}
+     * @return array{username: string, name: string, nip: string, role: string, loket_id: int|null, is_active: bool}
      */
     private function userAttributes(array $attributes): array
     {
@@ -158,10 +179,35 @@ class UserManagementController extends Controller
         return [
             'username' => $attributes['username'],
             'name' => $attributes['name'],
+            'nip' => $attributes['nip'],
             'role' => $role,
-            'loket_id' => $role === UserRole::PetugasLoket->value ? $attributes['loket_id'] : null,
+            'loket_id' => $role === UserRole::PetugasLoket->value ? (int) $attributes['loket_id'] : null,
             'is_active' => $attributes['is_active'],
         ];
+    }
+
+    private function ensureAssignedLoketIsActive(?int $loketId): void
+    {
+        if ($loketId === null) {
+            return;
+        }
+
+        $lock = DB::table('skpd_inventory_locks')
+            ->where('id', 1)
+            ->lockForUpdate()
+            ->first();
+
+        if ($lock === null) {
+            throw new \LogicException('Kunci transaksi inventaris SKPD tidak tersedia.');
+        }
+
+        $loket = Loket::query()->lockForUpdate()->find($loketId);
+
+        if ($loket === null || ! $loket->is_active) {
+            throw ValidationException::withMessages([
+                'loket_id' => 'Loket tidak aktif atau tidak lagi tersedia untuk penugasan.',
+            ]);
+        }
     }
 
     /**
@@ -181,6 +227,7 @@ class UserManagementController extends Controller
     private function lokets(): array
     {
         return Loket::query()
+            ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn (Loket $loket): array => ['id' => $loket->id, 'name' => $loket->name])
@@ -188,7 +235,7 @@ class UserManagementController extends Controller
     }
 
     /**
-     * @return array{id: int, username: string, name: string, role: string, role_label: string, loket: array{id: int, name: string}|null, is_active: bool, last_login_at: string|null}
+     * @return array{id: int, username: string, name: string, nip: string, role: string, role_label: string, loket: array{id: int, name: string}|null, is_active: bool, last_login_at: string|null}
      */
     private function userData(User $user): array
     {
@@ -196,6 +243,7 @@ class UserManagementController extends Controller
             'id' => $user->id,
             'username' => $user->username,
             'name' => $user->name,
+            'nip' => $user->nip,
             'role' => $user->role->value,
             'role_label' => $user->role->label(),
             'loket' => $user->loket === null ? null : [

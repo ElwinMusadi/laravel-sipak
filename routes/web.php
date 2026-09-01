@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LoketController;
 use App\Http\Controllers\SkpdAllocationController;
 use App\Http\Controllers\SkpdBapAdministrativeReceiptController;
 use App\Http\Controllers\SkpdBapCancellationController;
@@ -24,6 +25,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->name('bap-cancellations.')
         ->group(function (): void {
             Route::get('/', [SkpdBapCancellationController::class, 'index'])->name('index');
+            Route::get('create', [SkpdBapCancellationController::class, 'createEntry'])
+                ->middleware('can:create-bap-cancellations')
+                ->name('create');
             Route::get('{bapCancellation}', [SkpdBapCancellationController::class, 'show'])->name('show');
         });
 
@@ -89,6 +93,9 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('{bap}/edit', [SkpdBapController::class, 'edit'])->name('edit');
             Route::put('{bap}', [SkpdBapController::class, 'update'])->name('update');
             Route::post('{bap}/submit', [SkpdBapController::class, 'submit'])->name('submit');
+            Route::delete('{bap}', [SkpdBapController::class, 'destroy'])
+                ->middleware('can:delete-bap,bap')
+                ->name('destroy');
         });
 
     Route::middleware('can:view-bap-verifications-phase-1')
@@ -141,7 +148,7 @@ Route::middleware(['auth', 'active', 'can:view-skpd-inventory'])
 
         Route::middleware('can:view-central-skpd-inventory')->group(function (): void {
             Route::resource('boxes', SkpdBoxController::class)
-                ->only(['index', 'create', 'store', 'show']);
+                ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
         });
 
         Route::get('allocations', [SkpdAllocationController::class, 'index'])->name('allocations.index');
@@ -155,5 +162,8 @@ Route::middleware(['auth', 'active', 'can:view-skpd-inventory'])
         Route::post('allocations/{skpdAllocation}/accept', [SkpdAllocationController::class, 'accept'])->name('allocations.accept');
         Route::post('allocations/{skpdAllocation}/cancel', [SkpdAllocationController::class, 'cancel'])->name('allocations.cancel');
     });
+
+Route::middleware(['auth', 'active', 'can:manage-lokets'])
+    ->resource('lokets', LoketController::class);
 
 require __DIR__.'/settings.php';

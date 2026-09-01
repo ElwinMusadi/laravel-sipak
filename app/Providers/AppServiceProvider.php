@@ -70,6 +70,8 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-users', fn (User $user): bool => $user->role === UserRole::Superadmin);
 
+        Gate::define('manage-lokets', fn (User $user): bool => $user->role === UserRole::Superadmin);
+
         Gate::define('view-skpd-inventory', fn (User $user): bool => in_array($user->role, [
             UserRole::Superadmin,
             UserRole::BendaharaBarang,
@@ -110,6 +112,11 @@ class AppServiceProvider extends ServiceProvider
             && $user->id === $bap->created_by
             && $bap->status === BapStatus::Draft);
 
+        Gate::define('delete-bap', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasLoket
+            && $user->loket_id === $bap->loket_id
+            && $user->id === $bap->created_by
+            && $bap->status === BapStatus::Draft);
+
         Gate::define('submit-bap', fn (User $user, Bap $bap): bool => $user->role === UserRole::PetugasLoket
             && $user->loket_id === $bap->loket_id
             && $bap->status === BapStatus::Draft);
@@ -122,6 +129,9 @@ class AppServiceProvider extends ServiceProvider
             && $user->loket_id === $bap->loket_id
             && $user->id === $bap->created_by
             && $bap->status === BapStatus::Draft);
+
+        Gate::define('create-bap-cancellations', fn (User $user): bool => $user->role === UserRole::PetugasLoket
+            && $user->loket_id !== null);
 
         Gate::define('view-bap-verifications-phase-1', fn (User $user): bool => $user->role === UserRole::PetugasPenetapan);
 

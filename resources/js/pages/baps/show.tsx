@@ -11,6 +11,7 @@ import {
     type BapStatus,
 } from '@/components/bap/bap-status-badge';
 import { BapSubmitDialog } from '@/components/bap/bap-submit-dialog';
+import { BapDeleteDialog } from '@/components/bap/bap-delete-dialog';
 import {
     formatDate,
     formatDateTime,
@@ -48,7 +49,12 @@ type Props = {
         created_by: string;
         created_at: string;
         submitted_at: string | null;
-        can: { edit: boolean; submit: boolean; create_cancellation: boolean };
+        can: {
+            edit: boolean;
+            submit: boolean;
+            delete: boolean;
+            create_cancellation: boolean;
+        };
         segments: {
             id: number;
             allocation_id: number;
@@ -136,6 +142,7 @@ export default function ShowBap({ bap }: Props) {
                             </Button>
                         ) : null}
                         {bap.can.submit ? <BapSubmitDialog bap={bap} /> : null}
+                        {bap.can.delete ? <BapDeleteDialog bap={bap} /> : null}
                         {bap.can.create_cancellation ? (
                             <Button asChild>
                                 <Link href={createCancellation(bap.id)}>

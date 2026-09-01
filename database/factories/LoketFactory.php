@@ -18,7 +18,10 @@ class LoketFactory extends Factory
     public function definition(): array
     {
         return [
+            'code' => 'LOKET-'.fake()->unique()->numerify('###'),
             'name' => 'Loket '.fake()->unique()->numberBetween(1, 999),
+            'description' => null,
+            'is_active' => true,
         ];
     }
 }

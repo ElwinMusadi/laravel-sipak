@@ -14,6 +14,7 @@ import {
     Hash,
     LayoutDashboard,
     MessagesSquare,
+    MapPinned,
     Package,
     Users,
 } from 'lucide-react';
@@ -26,6 +27,7 @@ import { index as bapAdministrationsIndex } from '@/routes/bap-administrations';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as bukuKendaliIndex } from '@/routes/buku-kendali';
 import { index as laporanPemakaianIndex } from '@/routes/laporan-pemakaian';
+import { index as loketsIndex } from '@/routes/lokets';
 import { index as skpdAllocationIndex } from '@/routes/skpd/allocations';
 import { index as skpdBoxIndex } from '@/routes/skpd/boxes';
 import { index as skpdInventoryIndex } from '@/routes/skpd/inventory';
@@ -35,6 +37,7 @@ type NavigationHref = NonNullable<InertiaLinkProps['href']>;
 
 export type ApplicationPermission =
     | 'manageUsers'
+    | 'manageLokets'
     | 'viewSkpdInventory'
     | 'viewCentralSkpdInventory'
     | 'viewBaps'
@@ -202,6 +205,13 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
                 href: usersIndex(),
                 availability: 'available',
                 requiredPermission: 'manageUsers',
+            },
+            {
+                title: 'Master Loket',
+                icon: MapPinned,
+                href: loketsIndex(),
+                availability: 'available',
+                requiredPermission: 'manageLokets',
             },
         ],
     },

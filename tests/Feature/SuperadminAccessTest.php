@@ -204,6 +204,7 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
         ->post(route('users.store'), [
             'username' => 'phase16-user',
             'name' => 'Pengguna Phase 16',
+            'nip' => '199001012020011003',
             'password' => 'Phase16-password!',
             'password_confirmation' => 'Phase16-password!',
             'role' => UserRole::PetugasLoket->value,
@@ -217,6 +218,7 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
         ->put(route('users.update', $managedUser), [
             'username' => 'phase16-user',
             'name' => 'Pengguna Phase 16 Diperbarui',
+            'nip' => '199001012020011003',
             'role' => UserRole::BendaharaBarang->value,
             'loket_id' => null,
             'is_active' => false,

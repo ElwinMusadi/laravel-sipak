@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\SkpdInventory\RecordBapCancellation;
 use App\BapCancellationReason;
+use App\BapStatus;
 use App\Http\Requests\SkpdInventory\StoreBapCancellationRequest;
 use App\Models\Bap;
 use App\Models\BapCancellation;
@@ -68,6 +69,44 @@ class SkpdBapCancellationController extends Controller
                 ->withQueryString()
                 ->through(fn (BapCancellation $cancellation): array => $this->cancellationListData($cancellation)),
             'filters' => $filters,
+            'can' => ['create' => $actor->can('create-bap-cancellations')],
+        ]);
+    }
+
+    /**
+     * Select an eligible draft BAP before opening the immutable cancellation form.
+     */
+    public function createEntry(Request $request): Response
+    {
+        $actor = $this->actor($request);
+
+        Gate::authorize('create-bap-cancellations');
+
+        $query = Bap::query()
+            ->with(['loket:id,name', 'creator:id,name'])
+            ->where('status', BapStatus::Draft);
+
+        if (! $actor->isGlobalAdministrator()) {
+            $query
+                ->where('loket_id', $actor->loket_id)
+                ->where('created_by', $actor->id);
+        }
+
+        return Inertia::render('bap-cancellations/create-entry', [
+            'baps' => $query
+                ->orderByDesc('service_date')
+                ->orderByDesc('id')
+                ->get()
+                ->map(fn (Bap $bap): array => [
+                    'id' => $bap->id,
+                    'service_date' => $bap->service_date->toDateString(),
+                    'loket' => $bap->loket->name,
+                    'numerator_start' => $bap->numerator_start,
+                    'numerator_end' => $bap->numerator_end,
+                    'created_by' => $bap->creator->name,
+                ])
+                ->values()
+                ->all(),
         ]);
     }
 

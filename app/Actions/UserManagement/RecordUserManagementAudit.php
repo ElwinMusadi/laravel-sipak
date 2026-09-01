@@ -26,6 +26,7 @@ class RecordUserManagementAudit
         $events = [
             'username' => 'user.username_changed',
             'name' => 'user.name_changed',
+            'nip' => 'user.nip_changed',
             'role' => 'user.role_changed',
             'loket_id' => 'user.loket_changed',
             'is_active' => $user->is_active ? 'user.activated' : 'user.deactivated',
@@ -60,6 +61,7 @@ class RecordUserManagementAudit
         return [
             'username' => $user->username,
             'name' => $user->name,
+            'nip' => $user->nip,
             'role' => $user->role->value,
             'loket_id' => $user->loket_id,
             'is_active' => $user->is_active,

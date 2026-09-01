@@ -15,6 +15,7 @@ export type SkpdBoxSummary = {
     numerator_start: number;
     numerator_end: number;
     total_sets: number;
+    central_storage_location: string;
     pending_quantity: number;
     allocated_quantity: number;
     available_quantity: number;

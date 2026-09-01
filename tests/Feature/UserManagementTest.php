@@ -49,6 +49,7 @@ test('superadmin can create an active petugas loket user with a loket assignment
         ->post(route('users.store'), [
             'username' => 'PETUGAS.LOKET',
             'name' => 'Petugas Loket',
+            'nip' => '199001012020011001',
             'password' => 'Password-aman-123!',
             'password_confirmation' => 'Password-aman-123!',
             'role' => UserRole::PetugasLoket->value,
@@ -62,6 +63,7 @@ test('superadmin can create an active petugas loket user with a loket assignment
     $this->assertDatabaseHas('users', [
         'id' => $user->id,
         'username' => 'petugas.loket',
+        'nip' => '199001012020011001',
         'role' => UserRole::PetugasLoket->value,
         'loket_id' => $loket->id,
         'is_active' => true,
@@ -82,6 +84,7 @@ test('superadmin can deactivate a user and their active session loses access', f
         ->put(route('users.update', $user), [
             'username' => $user->username,
             'name' => $user->name,
+            'nip' => $user->nip,
             'role' => UserRole::PetugasPenetapan->value,
             'is_active' => false,
         ])
@@ -164,6 +167,7 @@ test('petugas loket requires a loket assignment', function () {
         ->post(route('users.store'), [
             'username' => 'loket-tanpa-relasi',
             'name' => 'Petugas Tanpa Loket',
+            'nip' => '199001012020011002',
             'password' => 'Password-aman-123!',
             'password_confirmation' => 'Password-aman-123!',
             'role' => UserRole::PetugasLoket->value,

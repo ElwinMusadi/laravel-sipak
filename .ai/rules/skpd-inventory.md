@@ -13,3 +13,6 @@ Only the creator may cancel a pending allocation. Accepted allocations remain im
 
 ## Draft BAP sequence preservation
 BAP draft updates must acquire the shared inventory lock and preserve per-Loket numerator continuity. Once a later BAP exists, reject range changes to the earlier draft; usage segments remain the ledger source of truth and total usage stays derived.
+
+## Loket aktif adalah precondition terkunci
+Setiap mutasi allocation atau BAP baru harus berada dalam DB::transaction(..., attempts: 3), mengunci skpd_inventory_locks id 1 lalu row Loket, dan menolak Loket inactive. Jangan gunakan visibilitas UI atau validasi awal sebagai satu-satunya penjagaan lifecycle Loket.

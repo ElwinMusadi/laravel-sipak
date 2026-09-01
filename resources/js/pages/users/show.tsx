@@ -60,6 +60,14 @@ export default function ShowUser({ user }: Props) {
                                 </div>
                                 <div>
                                     <dt className="text-muted-foreground text-sm">
+                                        NIP
+                                    </dt>
+                                    <dd className="mt-1 font-mono text-sm font-medium tabular-nums">
+                                        {user.nip}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground text-sm">
                                         Loket
                                     </dt>
                                     <dd className="mt-1 font-medium">

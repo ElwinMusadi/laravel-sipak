@@ -7,8 +7,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['name'])]
+#[Fillable(['code', 'name', 'description', 'is_active'])]
 class Loket extends Model
 {
     /** @use HasFactory<LoketFactory> */
@@ -42,5 +43,27 @@ class Loket extends Model
     public function baps(): HasMany
     {
         return $this->hasMany(Bap::class);
+    }
+
+    /**
+     * Get the audit entries for this Loket.
+     *
+     * @return MorphMany<AuditLog, $this>
+     */
+    public function auditLogs(): MorphMany
+    {
+        return $this->morphMany(AuditLog::class, 'auditable');
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
     }
 }

@@ -2,6 +2,7 @@ export type User = {
     id: number;
     username: string;
     name: string;
+    nip: string | null;
     email: string | null;
     avatar?: string;
     role: string;
@@ -18,6 +19,7 @@ export type Auth = {
     user: User | null;
     permissions: {
         manageUsers: boolean;
+        manageLokets: boolean;
         viewSkpdInventory: boolean;
         viewCentralSkpdInventory: boolean;
         manageSkpdInventory: boolean;

@@ -42,6 +42,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'permissions' => [
                     'manageUsers' => $request->user()?->can('manage-users') ?? false,
+                    'manageLokets' => $request->user()?->can('manage-lokets') ?? false,
                     'viewSkpdInventory' => $request->user()?->can('view-skpd-inventory') ?? false,
                     'viewCentralSkpdInventory' => $request->user()?->can('view-central-skpd-inventory') ?? false,
                     'manageSkpdInventory' => $request->user()?->can('manage-skpd-inventory') ?? false,

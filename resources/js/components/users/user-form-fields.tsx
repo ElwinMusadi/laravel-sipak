@@ -26,6 +26,7 @@ export type ManagedUser = {
     id: number;
     username: string;
     name: string;
+    nip: string;
     role: string;
     loket: LoketOption | null;
     is_active: boolean;
@@ -34,6 +35,7 @@ export type ManagedUser = {
 type FormErrors = {
     username?: string;
     name?: string;
+    nip?: string;
     password?: string;
     password_confirmation?: string;
     role?: string;
@@ -93,6 +95,26 @@ export function UserFormFields({
                     placeholder="Nama lengkap"
                 />
                 <InputError message={errors.name} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor="nip">NIP</Label>
+                <Input
+                    id="nip"
+                    name="nip"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{18}"
+                    defaultValue={user?.nip}
+                    required
+                    autoComplete="off"
+                    placeholder="18 digit NIP"
+                />
+                <p className="text-muted-foreground text-xs">
+                    NIP wajib terdiri dari tepat 18 digit dan tidak digunakan
+                    sebagai credential login.
+                </p>
+                <InputError message={errors.nip} />
             </div>
 
             {includePassword && (

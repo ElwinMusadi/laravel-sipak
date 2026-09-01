@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\SkpdInventory\DeleteSkpdBox;
 use App\Actions\SkpdInventory\RegisterSkpdBox;
+use App\Actions\SkpdInventory\UpdateSkpdBox;
 use App\Http\Requests\SkpdInventory\StoreSkpdBoxRequest;
+use App\Http\Requests\SkpdInventory\UpdateSkpdBoxRequest;
 use App\Models\BapUsageSegment;
 use App\Models\Loket;
 use App\Models\SkpdAllocation;
@@ -145,8 +148,65 @@ class SkpdBoxController extends Controller
                     ->values()
                     ->all(),
             ],
-            'can' => ['createAllocation' => $request->user()?->can('manage-skpd-inventory') ?? false],
+            'can' => [
+                'createAllocation' => $request->user()?->can('manage-skpd-inventory') ?? false,
+                'edit' => $request->user()?->can('manage-skpd-inventory') ?? false,
+                'delete' => ($request->user()?->can('manage-skpd-inventory') ?? false) && $box->allocations->isEmpty(),
+            ],
         ]);
+    }
+
+    /**
+     * Show the limited metadata form for a central SKPD box.
+     */
+    public function edit(SkpdBox $box): Response
+    {
+        Gate::authorize('manage-skpd-inventory');
+
+        return Inertia::render('skpd/boxes/edit', [
+            'box' => [
+                'id' => $box->id,
+                'box_number' => $box->box_number,
+                'numerator_start' => $box->numerator_start,
+                'numerator_end' => $box->numerator_end,
+                'total_sets' => $box->total_sets,
+                'central_storage_location' => $box->central_storage_location,
+                'received_at' => $box->received_at->toDateString(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update only box metadata; its numbered range is immutable after registration.
+     */
+    public function update(UpdateSkpdBoxRequest $request, SkpdBox $box, UpdateSkpdBox $updateSkpdBox): RedirectResponse
+    {
+        $attributes = $request->validated();
+        $updatedBox = $updateSkpdBox->handle(
+            $this->actor($request),
+            $box,
+            $attributes['box_number'],
+            $attributes['central_storage_location'],
+            CarbonImmutable::createFromFormat('Y-m-d', $attributes['received_at'])->startOfDay(),
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Metadata box SKPD berhasil diperbarui.']);
+
+        return to_route('skpd.boxes.show', $updatedBox);
+    }
+
+    /**
+     * Delete only a box that has never entered the allocation ledger.
+     */
+    public function destroy(SkpdBox $box, Request $request, DeleteSkpdBox $deleteSkpdBox): RedirectResponse
+    {
+        Gate::authorize('manage-skpd-inventory');
+
+        $deleteSkpdBox->handle($this->actor($request), $box);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Box SKPD yang belum digunakan berhasil dihapus.']);
+
+        return to_route('skpd.boxes.index');
     }
 
     /**
@@ -217,7 +277,7 @@ class SkpdBoxController extends Controller
     }
 
     /**
-     * @return array{id: int, box_number: string, numerator_start: int, numerator_end: int, total_sets: int, pending_quantity: int, allocated_quantity: int, available_quantity: int, used_quantity: int, status: string, loket: array{id: int, name: string}|null, received_at: string}
+     * @return array{id: int, box_number: string, numerator_start: int, numerator_end: int, total_sets: int, central_storage_location: string, pending_quantity: int, allocated_quantity: int, available_quantity: int, used_quantity: int, status: string, loket: array{id: int, name: string}|null, received_at: string}
      */
     private function boxData(SkpdBox $box): array
     {
@@ -246,6 +306,7 @@ class SkpdBoxController extends Controller
             'numerator_start' => $box->numerator_start,
             'numerator_end' => $box->numerator_end,
             'total_sets' => $box->total_sets,
+            'central_storage_location' => $box->central_storage_location,
             'pending_quantity' => $pendingQuantity,
             'allocated_quantity' => $allocatedQuantity,
             'available_quantity' => $box->total_sets - $activeAllocationQuantity,
@@ -284,6 +345,8 @@ class SkpdBoxController extends Controller
     {
         return match ($event) {
             'skpd_box.registered' => 'Box SKPD didaftarkan',
+            'skpd_box.updated' => 'Metadata box SKPD diperbarui',
+            'skpd_box.deleted' => 'Box SKPD dihapus',
             'skpd_allocation.created' => 'Alokasi SKPD dibuat',
             'skpd_allocation.accepted' => 'Handover alokasi diterima',
             'skpd_allocation.cancelled' => 'Alokasi pending dibatalkan',

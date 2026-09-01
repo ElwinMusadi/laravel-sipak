@@ -44,10 +44,17 @@ class CreateBap
 
         return DB::transaction(function () use ($actor, $loket, $serviceDate, $numeratorStart, $numeratorEnd, $onlineUsageCount, $totalUsage): Bap {
             $this->lockInventory();
+            $lockedLoket = Loket::query()->lockForUpdate()->findOrFail($loket->id);
+
+            if (! $lockedLoket->is_active) {
+                throw ValidationException::withMessages([
+                    'loket_id' => 'Loket tidak aktif dan tidak dapat membuat BAP baru.',
+                ]);
+            }
 
             /** @var Collection<int, Bap> $existingBaps */
             $existingBaps = Bap::query()
-                ->where('loket_id', $loket->id)
+                ->where('loket_id', $lockedLoket->id)
                 ->orderBy('numerator_end')
                 ->lockForUpdate()
                 ->get();
@@ -62,7 +69,7 @@ class CreateBap
 
             /** @var Collection<int, SkpdAllocation> $allocations */
             $allocations = SkpdAllocation::query()
-                ->where('loket_id', $loket->id)
+                ->where('loket_id', $lockedLoket->id)
                 ->whereIn('status', [SkpdAllocationStatus::Accepted->value, SkpdAllocationStatus::Completed->value])
                 ->orderBy('numerator_start')
                 ->lockForUpdate()
@@ -101,7 +108,7 @@ class CreateBap
             }
 
             $bap = Bap::create([
-                'loket_id' => $loket->id,
+                'loket_id' => $lockedLoket->id,
                 'service_date' => $serviceDateString,
                 'numerator_start' => $numeratorStart,
                 'numerator_end' => $numeratorEnd,

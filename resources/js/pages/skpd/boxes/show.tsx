@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, ArrowRightLeft, History } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, History, Pencil } from 'lucide-react';
 import { AllocationStatusBadge } from '@/components/allocation/allocation-status-badge';
 import { BoxStatusBadge } from '@/components/inventory/box-status-badge';
+import { BoxDeleteDialog } from '@/components/inventory/box-delete-dialog';
 import {
     formatDate,
     formatDateTime,
@@ -25,7 +26,7 @@ import {
     create as createAllocation,
     show as allocationShow,
 } from '@/routes/skpd/allocations';
-import { index } from '@/routes/skpd/boxes';
+import { edit, index } from '@/routes/skpd/boxes';
 
 type Allocation = {
     id: number;
@@ -53,7 +54,7 @@ type Props = {
             created_at: string;
         }[];
     };
-    can: { createAllocation: boolean };
+    can: { createAllocation: boolean; edit: boolean; delete: boolean };
 };
 
 export default function ShowBox({ box, can }: Props) {
@@ -83,14 +84,25 @@ export default function ShowBox({ box, can }: Props) {
                             )}
                         </p>
                     </div>
-                    {can.createAllocation && box.available_quantity > 0 ? (
-                        <Button asChild>
-                            <Link href={createAllocation()}>
-                                <ArrowRightLeft />
-                                Buat alokasi
-                            </Link>
-                        </Button>
-                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                        {can.createAllocation && box.available_quantity > 0 ? (
+                            <Button asChild>
+                                <Link href={createAllocation()}>
+                                    <ArrowRightLeft data-icon="inline-start" />
+                                    Buat alokasi
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {can.edit ? (
+                            <Button variant="outline" asChild>
+                                <Link href={edit(box.id)}>
+                                    <Pencil data-icon="inline-start" />
+                                    Edit metadata
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {can.delete ? <BoxDeleteDialog box={box} /> : null}
+                    </div>
                 </div>
 
                 <section className="grid gap-4 lg:grid-cols-3">
@@ -106,6 +118,10 @@ export default function ShowBox({ box, can }: Props) {
                             <DetailRow
                                 label="Didaftarkan oleh"
                                 value={box.creator.name}
+                            />
+                            <DetailRow
+                                label="Lokasi penyimpanan"
+                                value={box.central_storage_location}
                             />
                             <DetailRow
                                 label="Loket penerima"

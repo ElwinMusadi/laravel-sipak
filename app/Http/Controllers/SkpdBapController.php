@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\SkpdInventory\CreateBap;
+use App\Actions\SkpdInventory\DeleteDraftBap;
 use App\Actions\SkpdInventory\SubmitBap;
 use App\Actions\SkpdInventory\UpdateBap;
 use App\BapCancellationReason;
@@ -41,7 +42,7 @@ class SkpdBapController extends Controller
         $query = Bap::query()->with([
             'loket:id,name',
             'creator:id,name',
-        ]);
+        ])->withCount(['cancellations', 'verifications', 'clarificationRequests']);
 
         if (! $actor->can('view-all-baps')) {
             $query->where('loket_id', $actor->loket_id);
@@ -96,6 +97,7 @@ class SkpdBapController extends Controller
             'loket' => $loket === null ? null : ['id' => $loket->id, 'name' => $loket->name],
             'lokets' => $actor->isGlobalAdministrator()
                 ? Loket::query()
+                    ->where('is_active', true)
                     ->orderBy('name')
                     ->get(['id', 'name'])
                     ->map(fn (Loket $option): array => ['id' => $option->id, 'name' => $option->name])
@@ -172,7 +174,7 @@ class SkpdBapController extends Controller
                     ->orderBy('stage')
                     ->orderBy('attempt');
             },
-        ]);
+        ])->loadCount(['cancellations', 'verifications', 'clarificationRequests']);
 
         return Inertia::render('baps/show', [
             'bap' => [
@@ -292,7 +294,21 @@ class SkpdBapController extends Controller
     }
 
     /**
-     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, create_cancellation: bool}}
+     * Delete a draft BAP only while it has no immutable downstream history.
+     */
+    public function destroy(Bap $bap, Request $request, DeleteDraftBap $deleteDraftBap): RedirectResponse
+    {
+        Gate::authorize('delete-bap', $bap);
+
+        $deleteDraftBap->handle($this->actor($request), $bap);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP SKPD berhasil dihapus.']);
+
+        return to_route('baps.index');
+    }
+
+    /**
+     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool, create_cancellation: bool}}
      */
     private function bapData(User $actor, Bap $bap): array
     {
@@ -312,6 +328,10 @@ class SkpdBapController extends Controller
             'can' => [
                 'edit' => $actor->can('update-bap', $bap),
                 'submit' => $actor->can('submit-bap', $bap),
+                'delete' => $actor->can('delete-bap', $bap)
+                    && (int) $bap->cancellations_count === 0
+                    && (int) $bap->verifications_count === 0
+                    && (int) $bap->clarification_requests_count === 0,
                 'create_cancellation' => $actor->can('create-bap-cancellation', $bap),
             ],
         ];
@@ -337,6 +357,7 @@ class SkpdBapController extends Controller
         return match ($event) {
             'bap.created' => 'BAP SKPD dibuat',
             'bap.updated' => 'Draft BAP diperbarui',
+            'bap.deleted' => 'Draft BAP dihapus',
             'bap.submitted' => 'BAP SKPD diajukan',
             'bap_verification.phase_1_started' => 'Verifikasi Tahap 1 dimulai',
             'bap_verification.phase_1_checklist_completed' => 'Checklist Verifikasi Tahap 1 selesai',
@@ -388,7 +409,7 @@ class SkpdBapController extends Controller
     {
         abort_unless($actor->loket_id !== null, 403);
 
-        return Loket::query()->findOrFail($actor->loket_id);
+        return Loket::query()->where('is_active', true)->findOrFail($actor->loket_id);
     }
 
     private function selectedLoket(User $actor, Request $request): ?Loket
@@ -401,7 +422,7 @@ class SkpdBapController extends Controller
             return null;
         }
 
-        return Loket::query()->findOrFail($request->integer('loket'));
+        return Loket::query()->where('is_active', true)->findOrFail($request->integer('loket'));
     }
 
     /**
@@ -413,6 +434,6 @@ class SkpdBapController extends Controller
             return $this->actorLoket($actor);
         }
 
-        return Loket::query()->findOrFail((int) $attributes['loket_id']);
+        return Loket::query()->where('is_active', true)->findOrFail((int) $attributes['loket_id']);
     }
 }
