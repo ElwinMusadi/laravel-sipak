@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\BapStatus;
+use App\Exports\SkpdLaporanPemakaianExport;
 use App\Models\Bap;
-use App\Models\BapCancellation;
 use App\Models\Loket;
 use App\Models\User;
-use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
+use App\SkpdLaporanPemakaianQuery;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Excel as ExcelWriter;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SkpdLaporanPemakaianController extends Controller
 {
@@ -22,37 +25,15 @@ class SkpdLaporanPemakaianController extends Controller
 
         Gate::authorize('view-laporan-pemakaian');
 
-        $filters = $request->validate([
-            'month' => ['nullable', 'integer', 'between:1,12'],
-            'year' => ['nullable', 'integer', 'between:2000,9999'],
-            'loket' => ['nullable', 'integer', 'exists:lokets,id'],
-        ]);
-        $month = isset($filters['month']) ? (int) $filters['month'] : now()->month;
-        $year = isset($filters['year']) ? (int) $filters['year'] : now()->year;
-        $periodStart = CarbonImmutable::create($year, $month, 1)->startOfDay();
-        $periodEnd = $periodStart->endOfMonth();
-        $loketId = isset($filters['loket']) ? (int) $filters['loket'] : null;
-
-        $query = $this->completedBapQuery(
-            $periodStart->toDateString(),
-            $periodEnd->toDateString(),
-            $loketId,
-        );
+        $report = $this->report($request);
 
         return Inertia::render('laporan-pemakaian/index', [
-            'baps' => (clone $query)
-                ->with('loket:id,name')
-                ->withCount('cancellations')
-                ->orderByDesc('service_date')
-                ->orderByDesc('id')
+            'baps' => $report
+                ->detailQuery()
                 ->paginate(15)
                 ->withQueryString()
                 ->through(fn (Bap $bap): array => $this->bapData($bap)),
-            'filters' => [
-                'month' => $month,
-                'year' => $year,
-                'loket' => $loketId,
-            ],
+            'filters' => $report->filters(),
             'lokets' => Loket::query()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -61,89 +42,51 @@ class SkpdLaporanPemakaianController extends Controller
                     'name' => $loket->name,
                 ])
                 ->all(),
-            'summary' => $this->summaryData(clone $query),
-            'loket_recaps' => $this->loketRecapData(clone $query),
+            'summary' => $report->summary(),
+            'loket_recaps' => $report->loketRecaps(),
         ]);
     }
 
-    /**
-     * @return Builder<Bap>
-     */
-    private function completedBapQuery(
-        string $periodStart,
-        string $periodEnd,
-        ?int $loketId,
-    ): Builder {
-        $query = Bap::query()
-            ->where('status', BapStatus::Completed->value)
-            ->whereDate('service_date', '>=', $periodStart)
-            ->whereDate('service_date', '<=', $periodEnd);
-
-        if ($loketId !== null) {
-            $query->where('loket_id', $loketId);
-        }
-
-        return $query;
-    }
-
-    /**
-     * @param  Builder<Bap>  $query
-     * @return array{total_baps: int, total_usage: int, total_online: int, total_cancellations: int}
-     */
-    private function summaryData(Builder $query): array
+    public function pdf(Request $request): HttpResponse
     {
-        $summary = (clone $query)
-            ->toBase()
-            ->selectRaw('count(*) as total_baps')
-            ->selectRaw('coalesce(sum(total_usage), 0) as total_usage')
-            ->selectRaw('coalesce(sum(online_usage_count), 0) as total_online')
-            ->first();
-        $totalCancellations = BapCancellation::query()
-            ->whereIn('bap_id', (clone $query)->select('id'))
-            ->count();
+        $this->actor($request);
 
-        return [
-            'total_baps' => (int) ($summary->total_baps ?? 0),
-            'total_usage' => (int) ($summary->total_usage ?? 0),
-            'total_online' => (int) ($summary->total_online ?? 0),
-            'total_cancellations' => $totalCancellations,
-        ];
-    }
+        Gate::authorize('view-laporan-pemakaian');
 
-    /**
-     * @param  Builder<Bap>  $query
-     * @return list<array{loket_id: int, loket: string, total_baps: int, total_usage: int, total_online: int, total_cancellations: int}>
-     */
-    private function loketRecapData(Builder $query): array
-    {
-        $cancellationsByLoket = BapCancellation::query()
-            ->toBase()
-            ->join('baps', 'baps.id', '=', 'bap_cancellations.bap_id')
-            ->whereIn('bap_cancellations.bap_id', (clone $query)->select('id'))
-            ->select('baps.loket_id')
-            ->selectRaw('count(*) as total_cancellations')
-            ->groupBy('baps.loket_id')
-            ->pluck('total_cancellations', 'loket_id');
+        $report = $this->report($request);
 
-        return array_values((clone $query)
-            ->toBase()
-            ->join('lokets', 'lokets.id', '=', 'baps.loket_id')
-            ->select('baps.loket_id', 'lokets.name as loket')
-            ->selectRaw('count(*) as total_baps')
-            ->selectRaw('coalesce(sum(baps.total_usage), 0) as total_usage')
-            ->selectRaw('coalesce(sum(baps.online_usage_count), 0) as total_online')
-            ->groupBy('baps.loket_id', 'lokets.name')
-            ->orderBy('lokets.name')
-            ->get()
-            ->map(fn (object $recap): array => [
-                'loket_id' => (int) $recap->loket_id,
-                'loket' => (string) $recap->loket,
-                'total_baps' => (int) $recap->total_baps,
-                'total_usage' => (int) $recap->total_usage,
-                'total_online' => (int) $recap->total_online,
-                'total_cancellations' => (int) ($cancellationsByLoket[$recap->loket_id] ?? 0),
+        return Pdf::loadView('pdf.laporan-pemakaian', [
+            'appName' => (string) config('app.name', 'SIPAK-SKPD'),
+            'baps' => $report->detailQuery()->get(),
+            'generatedAt' => now(),
+            'logoDataUri' => $this->logoDataUri(),
+            'loket' => $report->selectedLoketName(),
+            'period' => $report->periodLabel(),
+            'summary' => $report->summary(),
+            'loketRecaps' => $report->loketRecaps(),
+        ])
+            ->setPaper('a4', 'landscape')
+            ->setWarnings(false)
+            ->addInfo([
+                'Title' => 'Laporan Sistem Pemakaian SKPD',
+                'Author' => 'SIPAK-SKPD',
             ])
-            ->all());
+            ->download($report->pdfFilename());
+    }
+
+    public function excel(Request $request): BinaryFileResponse
+    {
+        $this->actor($request);
+
+        Gate::authorize('view-laporan-pemakaian');
+
+        $report = $this->report($request);
+
+        return Excel::download(
+            new SkpdLaporanPemakaianExport($report),
+            $report->excelFilename(),
+            ExcelWriter::XLSX,
+        );
     }
 
     /**
@@ -162,6 +105,38 @@ class SkpdLaporanPemakaianController extends Controller
             'online_usage_count' => $bap->online_usage_count,
             'cancellation_count' => $bap->cancellations_count,
         ];
+    }
+
+    private function logoDataUri(): ?string
+    {
+        $path = public_path('images/logo-pemprov-ntt.png');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode($contents);
+    }
+
+    private function report(Request $request): SkpdLaporanPemakaianQuery
+    {
+        $filters = $request->validate([
+            'month' => ['nullable', 'integer', 'between:1,12'],
+            'year' => ['nullable', 'integer', 'between:2000,9999'],
+            'loket' => ['nullable', 'integer', 'exists:lokets,id'],
+        ]);
+
+        return new SkpdLaporanPemakaianQuery(
+            isset($filters['month']) ? (int) $filters['month'] : now()->month,
+            isset($filters['year']) ? (int) $filters['year'] : now()->year,
+            isset($filters['loket']) ? (int) $filters['loket'] : null,
+        );
     }
 
     private function actor(Request $request): User

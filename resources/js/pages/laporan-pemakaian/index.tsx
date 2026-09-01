@@ -1,5 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ExternalLink, X } from 'lucide-react';
+import {
+    FileDown,
+    FileSpreadsheet,
+    Printer,
+    ExternalLink,
+    X,
+} from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { EmptyState } from '@/components/app/empty-state';
 import {
@@ -37,7 +43,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { show as showBap } from '@/routes/baps';
-import { index } from '@/routes/laporan-pemakaian';
+import { excel, index, pdf } from '@/routes/laporan-pemakaian';
 
 const monthOptions = [
     { value: 1, label: 'Januari' },
@@ -109,6 +115,13 @@ export default function LaporanPemakaianIndex({
     const [year, setYear] = useState(filters.year.toString());
     const [loket, setLoket] = useState(filters.loket?.toString() ?? 'all');
     const periodLabel = formatPeriod(filters.month, filters.year);
+    const exportOptions = {
+        query: {
+            month: filters.month,
+            year: filters.year,
+            ...(filters.loket === null ? {} : { loket: filters.loket }),
+        },
+    };
 
     function applyFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -132,29 +145,62 @@ export default function LaporanPemakaianIndex({
         <>
             <Head title="Laporan Pemakaian SKPD" />
 
-            <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
+            <main
+                data-print-document
+                className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6"
+            >
                 <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                     <div className="flex flex-col gap-1.5">
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-semibold tracking-tight">
                                 Laporan Pemakaian SKPD
                             </h1>
-                            <Badge variant="outline">Read-only</Badge>
+                            <Badge data-print-hidden variant="outline">
+                                Read-only
+                            </Badge>
                         </div>
                         <p className="text-muted-foreground max-w-3xl text-sm">
                             Rekap pemakaian Bukti SKPD berdasarkan BAP yang
                             telah selesai administratif.
                         </p>
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                        Periode:{' '}
-                        <span className="text-foreground font-medium">
-                            {periodLabel}
-                        </span>
-                    </p>
+                    <div className="flex flex-col items-start gap-3 sm:items-end">
+                        <p className="text-muted-foreground text-sm">
+                            Periode:{' '}
+                            <span className="text-foreground font-medium">
+                                {periodLabel}
+                            </span>
+                        </p>
+                        <div
+                            data-print-hidden
+                            className="flex flex-wrap gap-2 sm:justify-end"
+                        >
+                            <Button variant="outline" size="sm" asChild>
+                                <a href={pdf.url(exportOptions)}>
+                                    <FileDown data-icon="inline-start" />
+                                    PDF
+                                </a>
+                            </Button>
+                            <Button variant="outline" size="sm" asChild>
+                                <a href={excel.url(exportOptions)}>
+                                    <FileSpreadsheet data-icon="inline-start" />
+                                    Excel
+                                </a>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.print()}
+                            >
+                                <Printer data-icon="inline-start" />
+                                Cetak
+                            </Button>
+                        </div>
+                    </div>
                 </section>
 
-                <Card>
+                <Card data-print-hidden>
                     <CardHeader>
                         <CardTitle>Filter laporan</CardTitle>
                         <CardDescription>
@@ -272,7 +318,10 @@ export default function LaporanPemakaianIndex({
                             />
                         ) : (
                             <>
-                                <div className="grid gap-3 lg:hidden">
+                                <div
+                                    data-print-mobile
+                                    className="grid gap-3 lg:hidden"
+                                >
                                     {loketRecaps.map((recap) => (
                                         <LoketMobileCard
                                             key={recap.loket_id}
@@ -281,7 +330,10 @@ export default function LaporanPemakaianIndex({
                                         />
                                     ))}
                                 </div>
-                                <div className="hidden lg:block">
+                                <div
+                                    data-print-table
+                                    className="hidden lg:block"
+                                >
                                     <Table className="min-w-3xl">
                                         <TableHeader>
                                             <TableRow>
@@ -298,7 +350,10 @@ export default function LaporanPemakaianIndex({
                                                 <TableHead className="text-right">
                                                     Batal/Rusak
                                                 </TableHead>
-                                                <TableHead className="text-right">
+                                                <TableHead
+                                                    data-print-action
+                                                    className="text-right"
+                                                >
                                                     Aksi
                                                 </TableHead>
                                             </TableRow>
@@ -335,7 +390,7 @@ export default function LaporanPemakaianIndex({
                                                         summary.total_cancellations,
                                                     )}
                                                 </TableCell>
-                                                <TableCell />
+                                                <TableCell data-print-action />
                                             </TableRow>
                                         </TableFooter>
                                     </Table>
@@ -361,12 +416,18 @@ export default function LaporanPemakaianIndex({
                             />
                         ) : (
                             <>
-                                <div className="grid gap-3 lg:hidden">
+                                <div
+                                    data-print-mobile
+                                    className="grid gap-3 lg:hidden"
+                                >
                                     {baps.data.map((bap) => (
                                         <BapMobileCard key={bap.id} bap={bap} />
                                     ))}
                                 </div>
-                                <div className="hidden lg:block">
+                                <div
+                                    data-print-table
+                                    className="hidden lg:block"
+                                >
                                     <Table className="min-w-5xl">
                                         <TableHeader>
                                             <TableRow>
@@ -383,7 +444,10 @@ export default function LaporanPemakaianIndex({
                                                 <TableHead className="text-right">
                                                     Batal/Rusak
                                                 </TableHead>
-                                                <TableHead className="text-right">
+                                                <TableHead
+                                                    data-print-action
+                                                    className="text-right"
+                                                >
                                                     Aksi
                                                 </TableHead>
                                             </TableRow>
@@ -423,7 +487,10 @@ export default function LaporanPemakaianIndex({
                                                             bap.cancellation_count,
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell
+                                                        data-print-action
+                                                        className="text-right"
+                                                    >
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -449,7 +516,10 @@ export default function LaporanPemakaianIndex({
                     </CardContent>
                 </Card>
 
-                <div className="flex flex-col justify-between gap-3 text-sm sm:flex-row sm:items-center">
+                <div
+                    data-print-hidden
+                    className="flex flex-col justify-between gap-3 text-sm sm:flex-row sm:items-center"
+                >
                     <p className="text-muted-foreground">
                         Menampilkan {baps.from ?? 0}–{baps.to ?? 0} dari{' '}
                         {baps.total} BAP
@@ -511,8 +581,8 @@ function LoketRecapRow({
             <TableCell className="text-right tabular-nums">
                 {formatQuantity(recap.total_cancellations)}
             </TableCell>
-            <TableCell className="text-right">
-                <Button variant="outline" size="sm" asChild>
+            <TableCell data-print-action className="text-right">
+                <Button data-print-hidden variant="outline" size="sm" asChild>
                     <Link href={recapDetailUrl(filters, recap.loket_id)}>
                         Detail BAP
                     </Link>
@@ -557,7 +627,7 @@ function LoketMobileCard({
                         value={formatQuantity(recap.total_cancellations)}
                     />
                 </div>
-                <Button variant="outline" size="sm" asChild>
+                <Button data-print-hidden variant="outline" size="sm" asChild>
                     <Link href={recapDetailUrl(filters, recap.loket_id)}>
                         Detail BAP
                     </Link>

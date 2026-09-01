@@ -42,9 +42,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->middleware('can:view-buku-kendali')
         ->name('buku-kendali.index');
 
-    Route::get('laporan/pemakaian', [SkpdLaporanPemakaianController::class, 'index'])
-        ->middleware('can:view-laporan-pemakaian')
-        ->name('laporan-pemakaian.index');
+    Route::middleware('can:view-laporan-pemakaian')
+        ->prefix('laporan/pemakaian')
+        ->name('laporan-pemakaian.')
+        ->group(function (): void {
+            Route::get('/', [SkpdLaporanPemakaianController::class, 'index'])->name('index');
+            Route::get('pdf', [SkpdLaporanPemakaianController::class, 'pdf'])->name('pdf');
+            Route::get('excel', [SkpdLaporanPemakaianController::class, 'excel'])->name('excel');
+        });
 
     Route::middleware('can:view-bap-clarifications')
         ->prefix('bap-clarifications')
