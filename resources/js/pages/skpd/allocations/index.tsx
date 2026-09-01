@@ -152,7 +152,7 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
         </Card>
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent>
             {allocations.data.length === 0 ? (
               <EmptyState
                 title="Belum ada distribusi SKPD."

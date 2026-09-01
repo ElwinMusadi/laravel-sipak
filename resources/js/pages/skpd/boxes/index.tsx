@@ -172,7 +172,7 @@ export default function BoxIndex({ boxes, filters, lokets, can }: Props) {
         </Card>
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent>
             {boxes.data.length === 0 ? (
               <EmptyState
                 title="Belum ada Box SKPD."

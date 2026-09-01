@@ -178,7 +178,7 @@ export default function BapIndex({ baps, filters, can }: Props) {
         </Card>
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent>
             {baps.data.length === 0 ? (
               <EmptyState
                 title="Belum ada BAP SKPD."
