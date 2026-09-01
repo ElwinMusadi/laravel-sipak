@@ -1,0 +1,133 @@
+<?php
+
+use App\Models\Loket;
+use App\Models\User;
+use App\UserRole;
+
+test('enforces the implemented view permission matrix for each role', function (
+    UserRole $role,
+    array $expectedPermissions,
+) {
+    $loket = $role === UserRole::PetugasLoket ? Loket::factory()->create() : null;
+    $user = User::factory()->create([
+        'role' => $role,
+        'loket_id' => $loket?->id,
+    ]);
+
+    foreach ($expectedPermissions as $ability => $expected) {
+        expect($user->can($ability))->toBe($expected);
+    }
+})->with([
+    'Superadmin' => [UserRole::Superadmin, [
+        'manage-users' => true,
+        'manage-lokets' => true,
+        'view-skpd-inventory' => true,
+        'view-central-skpd-inventory' => true,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => true,
+        'view-bap-verifications-phase-2' => true,
+        'view-bap-clarifications' => true,
+        'view-bap-administrations' => true,
+        'view-buku-kendali' => true,
+        'view-laporan-pemakaian' => true,
+    ]],
+    'Bendahara Barang' => [UserRole::BendaharaBarang, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => true,
+        'view-central-skpd-inventory' => true,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => false,
+        'view-bap-administrations' => true,
+        'view-buku-kendali' => true,
+        'view-laporan-pemakaian' => true,
+    ]],
+    'Petugas Loket' => [UserRole::PetugasLoket, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => true,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => true,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => false,
+    ]],
+    'Petugas Penetapan' => [UserRole::PetugasPenetapan, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => false,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => true,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => true,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => false,
+    ]],
+    'Petugas Verifikasi' => [UserRole::PetugasVerifikasi, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => false,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => true,
+        'view-bap-clarifications' => true,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => false,
+    ]],
+    'Kasie Penetapan' => [UserRole::KasiePenetapan, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => false,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => false,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => false,
+    ]],
+    'Kasie Verifikasi' => [UserRole::KasieVerifikasi, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => false,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => false,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => false,
+    ]],
+    'Kepala UPTD' => [UserRole::KepalaUptd, [
+        'manage-users' => false,
+        'manage-lokets' => false,
+        'view-skpd-inventory' => false,
+        'view-central-skpd-inventory' => false,
+        'view-baps' => true,
+        'view-bap-cancellations' => true,
+        'view-bap-verifications-phase-1' => false,
+        'view-bap-verifications-phase-2' => false,
+        'view-bap-clarifications' => false,
+        'view-bap-administrations' => false,
+        'view-buku-kendali' => false,
+        'view-laporan-pemakaian' => true,
+    ]],
+]);

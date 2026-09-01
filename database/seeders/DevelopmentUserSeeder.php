@@ -22,7 +22,7 @@ class DevelopmentUserSeeder extends Seeder
         $lokets = $this->seedLokets();
 
         foreach ($this->users($lokets) as $attributes) {
-            User::query()->updateOrCreate(
+            User::query()->firstOrCreate(
                 ['username' => $attributes['username']],
                 $attributes,
             );
@@ -49,11 +49,6 @@ class DevelopmentUserSeeder extends Seeder
 
             if ($loket === null) {
                 $loket = Loket::create([
-                    ...$definition,
-                    'is_active' => true,
-                ]);
-            } else {
-                $loket->update([
                     ...$definition,
                     'is_active' => true,
                 ]);
