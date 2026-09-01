@@ -47,6 +47,7 @@ type Props = {
         non_online_usage_count: number;
         status: BapStatus;
         created_by: string;
+        creator_role: string;
         created_at: string;
         submitted_at: string | null;
         can: {
@@ -179,8 +180,12 @@ export default function ShowBap({ bap }: Props) {
                                 value={<BapStatusBadge status={bap.status} />}
                             />
                             <DetailRow
-                                label="Dibuat oleh"
+                                label="Aktor"
                                 value={bap.created_by}
+                            />
+                            <DetailRow
+                                label="Role aktor"
+                                value={bap.creator_role}
                             />
                             <DetailRow
                                 label="Dibuat pada"

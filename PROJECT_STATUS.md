@@ -1,111 +1,243 @@
-# PHASE 17 — MASTER LOKET, CRUD DOMAIN, DAN DEVELOPMENT SEED DATA
+# SIPAK — STATUS PROYEK
 
 **Pembaruan terakhir:** 1 September 2026
-**Fase saat ini:** Phase 17 selesai
-**Status:** **READY FOR DEVELOPMENT** pada MySQL lokal; bukan persetujuan deployment production.
+**Fase saat ini:** Phase 18 selesai
+**Status:** siap untuk manual testing konteks Loket pada MySQL lokal, dengan precondition alokasi MPP pada bagian Findings.
 
-## A. Ringkasan
+## Fase Saat Ini
 
-Phase 17 menambahkan lifecycle aman untuk Master Loket, metadata Box SKPD, dan draft BAP tanpa mengubah prinsip SIPAK yang ledger-derived. Riwayat alokasi, BAP submitted/verification/clarification/receipt/completed, cancellation, usage segment, serta audit yang sudah ada tetap dipertahankan.
+Phase 18 — Superadmin Operational Loket Context & Manual Testing Readiness.
 
-Master Loket kini memiliki `code` unik, `name`, `description`, dan `is_active`. Status inactive menghentikan assignment Petugas Loket, alokasi baru, dan BAP baru, tetapi tidak menyembunyikan atau memutus riwayat yang sudah ada. Superadmin tetap administrator global tanpa Loket permanen.
+## Status Phase 18
 
-## B. GAP Analysis dan Keputusan Implementasi
+**SELESAI.** Tidak ada role switching, impersonation, permanent assignment Loket untuk Superadmin, migration baru, atau fitur di luar scope.
 
-| Area               | Kondisi sebelum Phase 17                                                                               | Keputusan dan hasil Phase 17                                                                                                                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Master Loket       | Hanya memiliki nama; belum ada lifecycle, code, status, audit, atau UI khusus.                         | Ditambahkan CRUD Superadmin, pencarian/filter, detail, `code` unik, nama non-unik, status, audit, tabel desktop, dan kartu mobile.                                                                                    |
-| Loket inactive     | Belum ada penjagaan state.                                                                             | Assignment Petugas Loket menolak Loket inactive; action alokasi dan BAP mengunci serta mengecek status Loket di dalam transaksi. Riwayat tetap dapat dibaca.                                                          |
-| Box SKPD           | Register, list, dan detail tersedia, tetapi metadata tidak dapat dikelola setelah register.            | Update hanya mengizinkan nomor/referensi, lokasi penyimpanan pusat, dan tanggal penerimaan. Range dan total tidak dikirim/diubah oleh endpoint. Hapus hanya bila belum memiliki alokasi.                              |
-| Draft BAP          | Create/read/update/submit tersedia; tidak ada penghapusan aman.                                        | Hapus hanya untuk draft yang dimiliki actor berwenang dan tanpa cancellation, verification, atau clarification. Usage segment dibersihkan secara terkunci, status allocation dihitung ulang, audit tombstone dicatat. |
-| BAP batal/rusak    | Model, action, dan form nested BAP tersedia, tetapi menu riwayat tidak memberi jalur input yang jelas. | Ditambahkan entry point menu `Catat batal/rusak` dengan pemilih draft BAP. Tetap memakai `BapCancellation` yang ada; tidak ada model dokumen paralel atau edit/delete riwayat.                                        |
-| Identitas pengguna | Login sudah username + password; belum ada NIP.                                                        | `users.nip` (18 digit, unik) ditambahkan secara migrasi aman; manajemen user mewajibkan NIP. `email` tetap nullable legacy/framework dan bukan credential.                                                            |
-| Seed development   | `DatabaseSeeder` membuat Test User generik.                                                            | Seeder idempoten membuat empat Loket dan tujuh akun development hanya pada environment `local`/`testing`; tidak membuat Box, allocation, BAP, cancellation, atau data transaksi lain.                                 |
+## Tujuan
 
-## C. Matriks Fungsi Phase 17
+Memisahkan hak akses global Superadmin dari konteks Loket transaksi BAP. Superadmin dapat mencatat BAP untuk Loket aktif yang dipilih secara eksplisit tanpa berubah menjadi Petugas Loket.
 
-| Fungsi                 | Otorisasi dan lifecycle                                                                                            | Bukti implementasi                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| Master Loket           | Hanya Superadmin; `Gate::before` tetap global hanya untuk Superadmin.                                              | `LoketController`, `CreateLoket`, `UpdateLoket`, `DeleteLoket`, route resource `lokets.*`. |
-| Nonaktifkan Loket      | Ditolak bila masih ada user yang ditugaskan; action memakai lock inventaris dan row Loket.                         | `UpdateLoket`; request user hanya menerima Loket aktif.                                    |
-| Hapus Loket            | Ditolak bila ada user, allocation, atau BAP; penghapusan yang benar-benar belum dipakai menyimpan audit tombstone. | `DeleteLoket`.                                                                             |
-| Alokasi/BAP pada Loket | Action mengunci Loket setelah lock inventaris dan menolak Loket inactive.                                          | `CreateSkpdAllocation`, `CreateBap`.                                                       |
-| Metadata Box           | Bendahara Barang/Superadmin melalui Gate existing; metadata terbatas, range immutable.                             | `UpdateSkpdBox`, `DeleteSkpdBox`, `skpd.boxes.edit/update/destroy`.                        |
-| Hapus Box              | Hanya tanpa allocation; Box bersejarah tidak dapat dihapus.                                                        | `DeleteSkpdBox`.                                                                           |
-| Hapus draft BAP        | Hanya draft milik Petugas Loket pembuat atau Superadmin; server menolak record bersejarah.                         | `DeleteDraftBap`, `baps.destroy`, dialog konfirmasi.                                       |
-| Batal/rusak            | Hanya draft BAP dalam kewenangan actor; histori tetap immutable.                                                   | Entry `bap-cancellations.create` menuju route nested cancellation yang sudah ada.          |
-| NIP                    | 18 digit dan unik untuk create/update user; tidak mengubah Fortify username/password.                              | migration `users.nip`, request user management, UI dan audit.                              |
-| Seed akun              | Idempoten, lokal/testing saja, password development ter-hash.                                                      | `DevelopmentUserSeeder`, dipanggil `DatabaseSeeder`.                                       |
+## GAP Analysis
 
-## D. Data Development
+| Area | Existing | Missing | Risiko | Solusi |
+| --- | --- | --- | --- | --- |
+| Schema BAP | `baps.loket_id` dan `created_by` sudah terpisah serta terindeks. | Tidak ada. | Migration tambahan dapat mengubah ledger tanpa kebutuhan. | Tidak membuat migration. |
+| Resolusi konteks | FormRequest, controller, dan `CreateBap` sudah membedakan Superadmin/Petugas Loket. | Bukti test Phase 18 dan penegasan detail aktor. | Frontend atau audit sulit diverifikasi manual. | Menambah feature test dan role aktor pada detail. |
+| UI Create BAP | Selector Loket aktif telah tersedia untuk Superadmin; Petugas menerima Loket server-side. | Label operasional yang eksplisit dan komposisi Select lengkap. | Pengguna dapat mengira sedang berganti role. | Label `Loket Pelayanan`, SelectGroup, serta penjelasan konteks. |
+| Detail/audit | BAP menyimpan Loket dan aktor; audit menyimpan `actor_id` dan `loket_id`. | Role aktor belum ditampilkan pada detail. | Who-created dan for-which-Loket kurang jelas. | Detail kini memuat Aktor, Role aktor, dan Loket. |
+| Seed/manual test | Elwin, Simson, dan MPP ada pada MySQL development. | Alokasi accepted MPP belum ada. | Manual create BAP MPP tidak dapat dilanjutkan secara sah. | Tidak membuat inventory fiktif; buat/terima alokasi nyata melalui workflow existing sebelum uji manual. |
 
-Seeder development membuat Loket aktif berikut tanpa truncate atau penghapusan data:
+## Operational Context
 
-| Code              | Nama                  |
-| ----------------- | --------------------- |
-| `SAMSAT-KANTOR`   | SAMSAT Kantor         |
-| `SAMSAT-KELILING` | SAMSAT Keliling       |
-| `SAMSAT-CORNER`   | SAMSAT Corner         |
-| `MPP`             | Mall Pelayanan Publik |
+Konteks Loket bersifat eksplisit hanya pada form Create BAP. Untuk Superadmin, `loket_id` adalah intent dari form yang divalidasi sebagai Loket aktif lalu di-resolve ulang oleh server. Tidak ada session context global, sehingga tidak ada stale context atau kebocoran lintas Loket.
 
-Tujuh akun development menggunakan password `password` yang di-hash dan login tetap memakai username:
+## Role vs Loket
 
-| Nama                | Username         | Role               | NIP                  | Loket         |
-| ------------------- | ---------------- | ------------------ | -------------------- | ------------- |
-| Elwin Bessiesura    | `elwinmusadi16`  | Superadmin         | `199707162025061002` | —             |
-| Yununs Asamani      | `yunus.asamani`  | Bendahara Barang   | `197907302009011003` | —             |
-| Simson Sae          | `simson.sae`     | Petugas Loket      | `197709032007011010` | SAMSAT Kantor |
-| Lily Toelle         | `lily.toelle`    | Petugas Penetapan  | `197012281993092001` | —             |
-| Jevon Wila Huky     | `jevon.wilahuky` | Petugas Verifikasi | `200408152025211001` | —             |
-| Skolastika G. Maing | `nena.maing`     | Kasie Penetapan    | `198804212011012006` | —             |
-| Jonny Alfreth Do'o  | `jonny.alfreth`  | Kasie Verifikasi   | `197106152007011039` | —             |
+Role menjawab otorisasi user. Loket Pelayanan menjawab Loket domain pada transaksi BAP. `UserRole::Superadmin` tetap satu role global; `baps.loket_id` menyimpan konteks domain; `baps.created_by` menyimpan aktor.
 
-Seeder tidak berjalan di environment selain `local` dan `testing`. Password tersebut hanya untuk development dan harus diganti/di-provision terpisah sebelum production.
+## Superadmin
 
-## E. MySQL, Migrasi, dan Integritas
+- Tetap memiliki global access melalui `Gate::before`.
+- Tidak memiliki assignment Loket permanen.
+- Dapat memilih semua Loket aktif pada Create BAP.
+- Setiap pemilihan tetap melewati validasi Loket aktif, lock inventaris, alokasi, urutan nomeratur, dan satu BAP per Loket/hari.
 
-- Migration `2026_09_01_085531_add_lifecycle_fields_to_lokets_table` telah diterapkan pada MySQL development: `lokets.code` non-null dan unik, `description` nullable, `is_active` default aktif. Backfill code numerik hanya berlaku bila terdapat Loket lama.
-- Migration `2026_09_01_085532_add_nip_to_users_table` telah diterapkan: `users.nip` nullable untuk keamanan data lama namun unik; request manajemen user mewajibkan nilai 18 digit untuk data baru/diubah.
-- Verifikasi schema MySQL membuktikan index unik `lokets_code_unique` dan `users_nip_unique` aktif.
-- Verifikasi data MySQL membuktikan tujuh username/NIP/role aktif dan empat Loket seed tersedia; Simson Sae ditempatkan pada `SAMSAT-KANTOR`.
-- Tidak ada perubahan pada credential Fortify: username + password tetap satu-satunya mekanisme login aplikasi.
+## Petugas Loket
 
-## F. Security dan Integritas Domain
+- Tetap hanya bekerja pada `users.loket_id` miliknya.
+- Create BAP menampilkan Loket Pelayanan sebagai informasi read-only, bukan dropdown.
+- `loket_id` dari POST ditolak oleh FormRequest; server selalu memakai assignment user.
 
-- Visibility navigasi memakai `auth.permissions` hanya untuk presentasi; middleware, Gate, FormRequest, action, transaksi, dan lock tetap memegang otorisasi server.
-- Mutasi Loket/Box/BAP yang menyentuh inventaris memakai `DB::transaction(..., attempts: 3)` dan lock inventaris yang berlaku. Tidak ada mutable stock atau ledger baru.
-- Create/update pengguna yang menugaskan Petugas Loket ikut mengunci inventaris dan row Loket aktif, sehingga terurut terhadap penonaktifan Loket.
-- Penghapusan Loket/Box yang tidak memiliki referensi diperbolehkan hanya sebagai cleanup master data awal dan tetap meninggalkan audit tombstone. Semua entitas yang memiliki user, allocation, BAP, atau usage history ditolak.
-- Submitted BAP serta BAP pada tahap verification, clarification, receipt, dan `completed` tidak dapat dihapus. Catatan batal/rusak juga tetap tidak menyediakan edit/delete.
-- Laporan, Buku Kendali, verification, clarification, receipt, dan status final BAP tidak dimodifikasi oleh Phase 17.
+## BAP Context
 
-## G. Quality Gate Phase 17
+Create BAP Superadmin menerima Loket aktif terpilih. Create BAP Petugas Loket tidak menerima `loket_id` dari client. Update BAP tetap melarang perubahan `loket_id`, termasuk oleh Superadmin, untuk menjaga usage segment dan alokasi tetap konsisten.
 
-| Pemeriksaan                                                   | Hasil        | Bukti                                                                                                                                  |
-| ------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Focused Phase 17 (SQLite)                                     | PASS         | 5 test, 140 assertion.                                                                                                                 |
-| Regresi user/inventory/BAP/cancellation terkait (SQLite)      | PASS         | 40 test, 441 assertion.                                                                                                                |
-| Full suite SQLite                                             | PASS         | 163 test, 1.476 assertion.                                                                                                             |
-| Full suite MySQL                                              | PASS         | 163 test, 1.476 assertion dengan `phpunit.mysql.xml`.                                                                                  |
-| MySQL migration development                                   | PASS         | Dua migration Phase 17 selesai diterapkan.                                                                                             |
-| MySQL seed development                                        | PASS         | Seeder `DevelopmentUserSeeder` selesai; schema dan data inti diverifikasi read-only.                                                   |
-| `vendor/bin/phpstan analyse --no-progress`                    | PASS         | 0 error.                                                                                                                               |
-| `vendor/bin/pint --dirty --format agent`                      | PASS         | Formatter PHP dijalankan pada perubahan.                                                                                               |
-| `php artisan wayfinder:generate --with-form --no-interaction` | PASS         | Actions dan routes TypeScript diregenerasi.                                                                                            |
-| `npm run types:check`                                         | PASS         | Deklarasi shared Inertia diperbaiki; tidak ada error TypeScript.                                                                       |
-| `npm run build`                                               | PASS         | 3.317 modul ditransform dan build produksi selesai.                                                                                    |
-| `npx vp check --fix` (berkas Phase 17)                        | PASS         | Format dan lint 20 berkas dalam scope lulus.                                                                                           |
-| `npm run check` global                                        | NOT CLEAN    | Formatting masih ditemukan pada berkas pre-existing/di luar scope; formatter global tidak dijalankan untuk menjaga perubahan pengguna. |
-| Browser/a11y/responsive/keyboard/print                        | NOT VERIFIED | Tidak ada browser harness pada environment ini.                                                                                        |
-| Uji concurrency paralel MySQL                                 | NOT VERIFIED | Locking action dan suite serial lulus; harness paralel belum dijalankan.                                                               |
+## Server-side Resolution
 
-## H. Open Questions dan Batas Phase Berikutnya
+Alur yang berlaku:
 
-| ID       | Status                      | Keputusan yang masih diperlukan                                                                                                                                                        |
-| -------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OQ-17-01 | Open business gap           | Blueprint masih mencantumkan Approval Kasie, bulk sign-off Kepala UPTD, master alasan batal/rusak, dan UI audit khusus tanpa workflow/rute implementasi. Tidak diinvent oleh Phase 17. |
-| OQ-17-02 | Technical decision required | Timezone operasional dan cut-off hari pelayanan belum ditetapkan; konfigurasi aplikasi tetap UTC.                                                                                      |
-| OQ-17-03 | Validation pending          | Visual browser untuk desktop/mobile, keyboard, light/dark, print, dan a11y belum dilakukan.                                                                                            |
-| OQ-17-04 | Validation pending          | Uji race/concurrency paralel MySQL belum tersedia.                                                                                                                                     |
+`Authenticated User → Gate/FormRequest → resolve Loket → lock inventaris dan Loket → cek active/alokasi/invarian → CreateBap → audit`.
 
-**Phase 17 selesai.** Implementasi berhenti pada Master Loket, lifecycle Box/draft BAP, entry BAP batal/rusak, NIP, dan seed development. Tidak ada pekerjaan Phase 18 yang dimulai.
+`CreateBap` memakai `DB::transaction(..., attempts: 3)`, mengunci `skpd_inventory_locks.id = 1` dan row Loket sebelum membuat BAP serta usage segment.
+
+## BAP UI
+
+- Superadmin: label **Loket Pelayanan**, dropdown seluruh Loket aktif, lalu data alokasi dan nomeratur dimuat untuk pilihan itu.
+- Petugas Loket: label **Loket Pelayanan** dan nama Loket read-only.
+- UI tetap memakai Amber shadcn/Radix, Lucide, Tailwind v4, light/dark semantic token, serta Wayfinder yang ada.
+
+## BAP Detail
+
+Detail BAP menampilkan:
+
+- Loket;
+- Aktor;
+- Role aktor;
+- waktu pembuatan dan status lifecycle.
+
+Dengan demikian, BAP dapat membedakan Elwin sebagai Superadmin pembuat dari Mall Pelayanan Publik sebagai Loket transaksi.
+
+## Audit
+
+Audit `bap.created` tetap menyimpan `actor_id` pada `audit_logs`, sementara `new_values.loket_id` menyimpan konteks Loket domain. Tidak ada mutasi role aktor atau audit mutable baru.
+
+## Authorization
+
+Otorisasi tetap server-side pada route middleware, Gate, FormRequest, controller, dan Action. `auth.permissions` hanya merupakan representasi UI. Superadmin tetap tunduk pada precondition domain; Petugas Loket tidak dapat memilih atau men-tamper Loket lain.
+
+## Inventory Integrity
+
+Tidak ada mutable stock, bypass allocation, atau ledger baru. `CreateBap` tetap menolak range di luar alokasi accepted/completed, celah/overlap penggunaan, nomeratur tidak berurutan, online melebihi total, dan BAP kedua pada Loket/tanggal yang sama. Nomeratur tetap divalidasi tujuh digit dengan minimum `0000001`.
+
+## Inactive Loket
+
+Loket inactive tidak muncul pada selector Superadmin dan ditolak untuk Create BAP. Petugas dengan assignment Loket inactive tidak dapat membuat BAP baru. BAP historis pada Loket inactive tetap dapat dibaca sesuai scope otorisasi.
+
+## Seed Data
+
+Verifikasi read-only MySQL development:
+
+- `elwinmusadi16`: Elwin Bessiesura, `superadmin`, `loket_id = null`;
+- `simson.sae`: Petugas Loket, terikat pada code `SAMSAT-KANTOR`;
+- `MPP`: Mall Pelayanan Publik, aktif.
+
+Tidak ada assignment palsu atau perubahan role untuk Elwin.
+
+## Manual Test Scenario
+
+1. Login sebagai `elwinmusadi16` dengan password development yang berlaku.
+2. Pastikan Mall Pelayanan Publik memiliki alokasi accepted yang nyata melalui workflow Box/Alokasi existing.
+3. Buka Create BAP, pilih **Loket Pelayanan: Mall Pelayanan Publik**, lalu gunakan range alokasi tersebut.
+4. Pastikan detail menampilkan Aktor Elwin Bessiesura, Role aktor Superadmin, dan Loket Mall Pelayanan Publik.
+5. Login sebagai `simson.sae`; Create BAP harus menampilkan Loket assignment-nya saja tanpa dropdown.
+
+## Security Test
+
+Feature test mencakup Superadmin context aktif, penyimpanan Loket/aktor/audit, assignment otomatis Petugas Loket, tampering `loket_id`, Loket inactive, data historis, alokasi, satu BAP per Loket/hari, larangan perubahan Loket draft, dan immutability submitted/completed.
+
+## Database MySQL
+
+Default koneksi aplikasi adalah `mysql`; `php artisan migrate:status` menunjukkan semua migration berstatus Ran. Full suite MySQL memakai `phpunit.mysql.xml` dan database testing terpisah.
+
+## Migration
+
+Tidak ada migration Phase 18. Schema BAP yang sudah ada (`loket_id`, `created_by`, unique `loket_id + service_date`) memenuhi kebutuhan operational context.
+
+## Wayfinder
+
+Tidak ada perubahan route/controller signature. `npm run build` memvalidasi dan meregenerasi actions, routes, serta form variants Wayfinder tanpa error.
+
+## Testing
+
+- Feature test Phase 18: 5 test, 90 assertion — PASS.
+- Regresi terkait BAP/Superadmin/user management: 34 test, 442 assertion — PASS.
+- Full suite SQLite: 168 test, 1.566 assertion — PASS.
+- Full suite MySQL: 168 test, 1.566 assertion — PASS.
+
+### Operational Context
+
+PASS — Superadmin memilih Loket aktif tanpa permanent assignment atau role mutation.
+
+### Superadmin
+
+PASS — BAP memakai Loket terpilih; aktor dan role Superadmin tetap tersimpan/terlihat.
+
+### Petugas Loket
+
+PASS — assignment server-side dipakai otomatis dan UI tidak memberi pilihan Loket lain.
+
+### Tampering
+
+PASS — `loket_id` pada request Petugas Loket ditolak sebagai input terlarang.
+
+### Inactive Loket
+
+PASS — pembuatan baru ditolak, data historis tetap terbaca.
+
+### BAP
+
+PASS — alokasi dan one-BAP-per-Loket/day tetap dipaksakan; Loket BAP draft tidak dapat diubah; submitted/completed immutable.
+
+### Audit
+
+PASS — `actor_id` dan `new_values.loket_id` tervalidasi.
+
+### MySQL
+
+PASS — default MySQL, migration status Ran, dan full suite MySQL lulus.
+
+### Full Regression
+
+PASS — SQLite dan MySQL masing-masing 168 test, 1.566 assertion.
+
+### TypeScript
+
+PASS — `npm run types:check`.
+
+### Build
+
+PASS — `npm run build`, 3.317 modul ditransform.
+
+### PHPStan
+
+PASS — `vendor/bin/phpstan analyse --no-progress`, 0 error.
+
+### Pint
+
+PASS — `vendor/bin/pint --dirty --format agent`.
+
+### git diff --check
+
+PASS — tidak ada whitespace error.
+
+## Findings
+
+### P0
+
+Tidak ada.
+
+### P1
+
+MySQL development saat ini belum memiliki alokasi accepted untuk MPP. Ini menghalangi hanya skenario manual create BAP sampai inventory nyata dialokasikan/diterima; tidak dibuat data inventory fiktif oleh Phase 18.
+
+### P2
+
+Nama Loket code `SAMSAT-KANTOR` pada MySQL development saat ini adalah `Kantor SAMSAT Kupang`, bukan label seed `SAMSAT Kantor`. Assignment Simson dan code tetap valid; tidak diubah karena bukan kebutuhan operational context.
+
+### P3
+
+Tidak ada.
+
+## Fixes Implemented
+
+- Menampilkan Role aktor pada detail BAP dan menambahkan `creator.role` pada read model.
+- Menegaskan label **Loket Pelayanan**, pesan explicit context, validasi visual Select, dan `SelectGroup` pada form BAP.
+- Menambah `OperationalLoketContextTest` untuk security/domain contract Phase 18.
+- Memperbarui handoff proyek ini berdasarkan hasil audit dan quality gate aktual.
+
+## Known Issues
+
+Browser/a11y/responsive manual tidak diverifikasi karena harness browser tidak tersedia. Uji race/concurrency paralel MySQL juga belum tersedia; action dan suite serial tetap membuktikan lock/invarian yang diterapkan.
+
+## Technical Debt
+
+Global operational context tidak dibuat karena belum diperlukan lintas modul. Bila kebutuhan muncul, harus didesain dengan isolasi session, expiry, audit, dan revalidasi server-side tersendiri.
+
+## Open Questions
+
+Timezone operasional dan cut-off hari pelayanan masih belum ditetapkan; aplikasi tetap mengikuti konfigurasi waktu saat ini.
+
+## Keputusan Teknis
+
+Memilih selector Loket eksplisit pada Create BAP. Schema existing sudah memadai, sehingga resolusi dilakukan pada request/controller/action tanpa migration atau session global.
+
+## Keputusan Bisnis
+
+Superadmin tetap Superadmin; context transaksi tidak sama dengan role. Perubahan Loket draft ditolak sebagai keputusan aman karena BAP sudah memiliki usage segment dan keterikatan alokasi.
+
+## Batasan
+
+Phase 18 tidak menambah impersonation, role switching, notification, laporan, tahap verifikasi, closing, snapshot inventory, attachment, QR, atau signature.
+
+## Handoff ke Phase 19
+
+Selesaikan precondition alokasi MPP melalui workflow inventory yang sah sebelum demonstrasi manual end-to-end. Phase berikutnya tidak boleh mengubah operational context ini tanpa menjaga authorization server-side, lock ledger, immutability BAP, dan audit.

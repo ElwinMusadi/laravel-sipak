@@ -23,6 +23,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -124,7 +125,7 @@ export function BapForm({
             {({ errors, processing }) => (
               <>
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="loket_id">Loket</Label>
+                  <Label htmlFor="loket_id">Loket Pelayanan</Label>
                   {mode === "create" && lokets.length > 0 ? (
                     <>
                       <input
@@ -144,24 +145,29 @@ export function BapForm({
                           )
                         }
                       >
-                        <SelectTrigger id="loket_id">
-                          <SelectValue placeholder="Pilih Loket untuk context testing" />
+                        <SelectTrigger
+                          id="loket_id"
+                          aria-invalid={Boolean(errors.loket_id)}
+                        >
+                          <SelectValue placeholder="Pilih Loket aktif" />
                         </SelectTrigger>
                         <SelectContent>
-                          {lokets.map((option) => (
-                            <SelectItem
-                              key={option.id}
-                              value={option.id.toString()}
-                            >
-                              {option.name}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            {lokets.map((option) => (
+                              <SelectItem
+                                key={option.id}
+                                value={option.id.toString()}
+                              >
+                                {option.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <InputError message={errors.loket_id} />
                       <p className="text-muted-foreground text-xs">
-                        Loket dipilih secara eksplisit untuk operasi Superadmin
-                        dan tidak disimpan pada akun.
+                        Semua Loket aktif dapat dipilih untuk transaksi ini dan
+                        tidak disimpan pada akun Superadmin.
                       </p>
                     </>
                   ) : (
@@ -170,8 +176,8 @@ export function BapForm({
                         {formLoket?.name ?? "Loket tidak tersedia"}
                       </div>
                       <p className="text-muted-foreground text-xs">
-                        Loket ditetapkan dari akun Petugas dan tidak dapat
-                        diubah dari form ini.
+                        Loket Pelayanan ditetapkan dari akun Petugas dan tidak
+                        dapat diubah dari form ini.
                       </p>
                     </>
                   )}
@@ -306,7 +312,10 @@ export function BapForm({
             <CardTitle>Review pemakaian</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm">
-            <ReviewRow label="Loket" value={formLoket?.name ?? "—"} />
+            <ReviewRow
+              label="Loket Pelayanan"
+              value={formLoket?.name ?? "—"}
+            />
             <ReviewRow
               label="Tanggal"
               value={
@@ -353,7 +362,7 @@ export function BapForm({
         {mode === "create" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Alokasi aktif Loket</CardTitle>
+              <CardTitle>Alokasi aktif Loket Pelayanan</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
               {allocations.length === 0 ? (

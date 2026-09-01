@@ -41,7 +41,7 @@ class SkpdBapController extends Controller
 
         $query = Bap::query()->with([
             'loket:id,name',
-            'creator:id,name',
+            'creator:id,name,role',
         ])->withCount(['cancellations', 'verifications', 'clarificationRequests']);
 
         if (! $actor->can('view-all-baps')) {
@@ -151,7 +151,7 @@ class SkpdBapController extends Controller
 
         $bap->load([
             'loket:id,name',
-            'creator:id,name',
+            'creator:id,name,role',
             'usageSegments' => function (Relation $query): void {
                 $query
                     ->with('skpdAllocation.skpdBox:id,box_number')
@@ -308,7 +308,7 @@ class SkpdBapController extends Controller
     }
 
     /**
-     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool, create_cancellation: bool}}
+     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, creator_role: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool, create_cancellation: bool}}
      */
     private function bapData(User $actor, Bap $bap): array
     {
@@ -323,6 +323,7 @@ class SkpdBapController extends Controller
             'non_online_usage_count' => $bap->total_usage - $bap->online_usage_count,
             'status' => $bap->status->value,
             'created_by' => $bap->creator->name,
+            'creator_role' => $bap->creator->role->label(),
             'created_at' => $bap->created_at->toIso8601String(),
             'submitted_at' => $bap->submitted_at?->toIso8601String(),
             'can' => [
