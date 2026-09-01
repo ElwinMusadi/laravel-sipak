@@ -24,8 +24,9 @@ export function ApplicationNavigation({ groups, permissions }: Props) {
     return groups.map((group) => {
         const items = group.items.filter(
             (item) =>
-                !item.requiredPermission ||
-                permissions[item.requiredPermission],
+                item.availability === 'available' &&
+                (!item.requiredPermission ||
+                    permissions[item.requiredPermission]),
         );
 
         if (items.length === 0) {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\BapVerificationStage;
 use App\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,6 +38,57 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * Determine whether the user is the global SIPAK administrator.
+     */
+    public function isGlobalAdministrator(): bool
+    {
+        return $this->role === UserRole::Superadmin;
+    }
+
+    /**
+     * Determine whether the user may act for the specified Loket context.
+     */
+    public function canOperateAtLoket(int $loketId): bool
+    {
+        return $this->isGlobalAdministrator()
+            || ($this->role === UserRole::PetugasLoket && $this->loket_id === $loketId);
+    }
+
+    /**
+     * Determine whether the user may manage a draft BAP.
+     */
+    public function canManageDraftBap(Bap $bap): bool
+    {
+        return $this->isGlobalAdministrator()
+            || ($this->canOperateAtLoket($bap->loket_id) && $this->id === $bap->created_by);
+    }
+
+    /**
+     * Determine whether the user may manage a pending SKPD allocation.
+     */
+    public function canManageSkpdAllocation(SkpdAllocation $allocation): bool
+    {
+        return $this->isGlobalAdministrator()
+            || $this->id === $allocation->created_by;
+    }
+
+    /**
+     * Determine whether the user may perform a verification stage.
+     */
+    public function canVerifyStage(BapVerificationStage $stage): bool
+    {
+        return $this->isGlobalAdministrator() || $this->role === $stage->verifierRole();
+    }
+
+    /**
+     * Determine whether the user may receive a BAP administratively.
+     */
+    public function canReceiveBapAdministratively(): bool
+    {
+        return $this->isGlobalAdministrator() || $this->role === UserRole::BendaharaBarang;
+    }
 
     /**
      * Get the loket assigned to the user.

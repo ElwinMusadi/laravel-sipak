@@ -26,12 +26,17 @@ import { index as bapAdministrationsIndex } from '@/routes/bap-administrations';
 import { index as bapsIndex } from '@/routes/baps';
 import { index as bukuKendaliIndex } from '@/routes/buku-kendali';
 import { index as laporanPemakaianIndex } from '@/routes/laporan-pemakaian';
+import { index as skpdAllocationIndex } from '@/routes/skpd/allocations';
+import { index as skpdBoxIndex } from '@/routes/skpd/boxes';
+import { index as skpdInventoryIndex } from '@/routes/skpd/inventory';
 import { index as usersIndex } from '@/routes/users';
 
 type NavigationHref = NonNullable<InertiaLinkProps['href']>;
 
 export type ApplicationPermission =
     | 'manageUsers'
+    | 'viewSkpdInventory'
+    | 'viewCentralSkpdInventory'
     | 'viewBaps'
     | 'viewBapCancellations'
     | 'viewBapVerificationsPhase1'
@@ -98,17 +103,23 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
             {
                 title: 'Persediaan Nomeratur',
                 icon: Hash,
-                availability: 'planned',
+                href: skpdInventoryIndex(),
+                availability: 'available',
+                requiredPermission: 'viewSkpdInventory',
             },
             {
                 title: 'Box SKPD',
                 icon: Archive,
-                availability: 'planned',
+                href: skpdBoxIndex(),
+                availability: 'available',
+                requiredPermission: 'viewCentralSkpdInventory',
             },
             {
                 title: 'Distribusi / Alokasi',
                 icon: ArrowLeftRight,
-                availability: 'planned',
+                href: skpdAllocationIndex(),
+                availability: 'available',
+                requiredPermission: 'viewSkpdInventory',
             },
             {
                 title: 'Buku Kendali',

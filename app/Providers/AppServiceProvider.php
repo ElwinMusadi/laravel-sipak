@@ -64,6 +64,10 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureAuthorization(): void
     {
+        Gate::before(function (User $user): ?bool {
+            return $user->isGlobalAdministrator() ? true : null;
+        });
+
         Gate::define('manage-users', fn (User $user): bool => $user->role === UserRole::Superadmin);
 
         Gate::define('view-skpd-inventory', fn (User $user): bool => in_array($user->role, [

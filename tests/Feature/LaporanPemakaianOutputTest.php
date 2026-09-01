@@ -110,8 +110,10 @@ function laporanPemakaianOutputCancellation(array $context, int $numerator): Bap
  * @param  list<string>  $attributes
  * @return array<string, mixed>
  */
-function laporanPemakaianOutputRawAttributes(object $model, array $attributes): array
+function laporanPemakaianOutputRawAttributes(Bap|BapUsageSegment|BapCancellation|BapVerification|BapClarificationRequest $model, array $attributes): array
 {
+    $model->refresh();
+
     return collect($attributes)
         ->mapWithKeys(fn (string $attribute): array => [
             $attribute => $model->getRawOriginal($attribute),
@@ -286,5 +288,4 @@ test('direct PDF and Excel endpoints forbid roles outside the report gate', func
     'Petugas Loket' => UserRole::PetugasLoket,
     'Petugas Penetapan' => UserRole::PetugasPenetapan,
     'Petugas Verifikasi' => UserRole::PetugasVerifikasi,
-    'Superadmin' => UserRole::Superadmin,
 ]);

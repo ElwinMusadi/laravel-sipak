@@ -22,7 +22,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['bap_id', 'skpd_allocation_id']);
-            $table->index(['skpd_allocation_id', 'numerator_start', 'numerator_end']);
+            $table->index(
+                ['skpd_allocation_id', 'numerator_start', 'numerator_end'],
+                'bap_usage_segments_allocation_range_index',
+            );
         });
 
         if (DB::getDriverName() === 'mysql') {

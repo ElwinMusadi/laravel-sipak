@@ -316,7 +316,6 @@ test('roles outside Petugas Penetapan cannot access or start Phase 1 verificatio
 })->with([
     'Petugas Loket' => UserRole::PetugasLoket,
     'Bendahara Barang' => UserRole::BendaharaBarang,
-    'Superadmin' => UserRole::Superadmin,
 ]);
 
 test('Petugas Penetapan cannot start verification for a draft BAP through a direct HTTP request', function () {

@@ -72,7 +72,7 @@ class SkpdBapController extends Controller
     }
 
     /**
-     * Show the BAP draft form for the Petugas Loket's assigned Loket.
+     * Show the BAP draft form for the active Loket context.
      */
     public function create(Request $request): Response
     {
@@ -80,12 +80,12 @@ class SkpdBapController extends Controller
 
         Gate::authorize('create-bap');
 
-        $loket = $this->actorLoket($actor);
-        $latestBap = Bap::query()
+        $loket = $this->selectedLoket($actor, $request);
+        $latestBap = $loket === null ? null : Bap::query()
             ->where('loket_id', $loket->id)
             ->orderByDesc('numerator_end')
             ->first(['id', 'numerator_end']);
-        $allocations = SkpdAllocation::query()
+        $allocations = $loket === null ? collect() : SkpdAllocation::query()
             ->with('usageSegments:id,skpd_allocation_id,quantity')
             ->where('loket_id', $loket->id)
             ->whereIn('status', [SkpdAllocationStatus::Accepted->value, SkpdAllocationStatus::Completed->value])
@@ -93,7 +93,14 @@ class SkpdBapController extends Controller
             ->get();
 
         return Inertia::render('baps/create', [
-            'loket' => ['id' => $loket->id, 'name' => $loket->name],
+            'loket' => $loket === null ? null : ['id' => $loket->id, 'name' => $loket->name],
+            'lokets' => $actor->isGlobalAdministrator()
+                ? Loket::query()
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn (Loket $option): array => ['id' => $option->id, 'name' => $option->name])
+                    ->all()
+                : [],
             'default_service_date' => now()->toDateString(),
             'expected_numerator_start' => $latestBap === null
                 ? $allocations->first()?->numerator_start
@@ -119,7 +126,7 @@ class SkpdBapController extends Controller
         $attributes = $request->validated();
         $bap = $createBap->handle(
             $actor,
-            $this->actorLoket($actor),
+            $this->storeLoket($actor, $attributes),
             CarbonImmutable::createFromFormat('Y-m-d', $attributes['service_date'])->startOfDay(),
             (int) $attributes['numerator_start'],
             (int) $attributes['numerator_end'],
@@ -382,5 +389,30 @@ class SkpdBapController extends Controller
         abort_unless($actor->loket_id !== null, 403);
 
         return Loket::query()->findOrFail($actor->loket_id);
+    }
+
+    private function selectedLoket(User $actor, Request $request): ?Loket
+    {
+        if (! $actor->isGlobalAdministrator()) {
+            return $this->actorLoket($actor);
+        }
+
+        if (! $request->has('loket')) {
+            return null;
+        }
+
+        return Loket::query()->findOrFail($request->integer('loket'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function storeLoket(User $actor, array $attributes): Loket
+    {
+        if (! $actor->isGlobalAdministrator()) {
+            return $this->actorLoket($actor);
+        }
+
+        return Loket::query()->findOrFail((int) $attributes['loket_id']);
     }
 }

@@ -1,194 +1,133 @@
-# SIPAK — STATUS PROYEK
+# PHASE 16 — SUPERADMIN FULL ACCESS & MYSQL MIGRATION
 
 **Pembaruan terakhir:** 1 September 2026
-**Fase saat ini:** PHASE 15 — FINAL AUDIT, SECURITY HARDENING, REGRESSION & RELEASE READINESS
-**Status akhir:** **READY WITH CONDITIONS** untuk codebase lokal; **belum boleh diperlakukan sebagai deployment production**.
+**Fase saat ini:** Phase 16 selesai
+**Status:** **READY WITH CONDITIONS** untuk development MySQL lokal; belum merupakan persetujuan deployment production.
 
-## Ringkasan Eksekutif
+## A. Ringkasan Phase 16
 
-Phase 15 mengaudit implementasi aktual SIPAK terhadap AI PRODUCT BLUEPRINT SIPAK, status Phase 14, source code, rute, skema, test, konfigurasi, dan quality gate. Tidak ditemukan P0. Tiga P1 deterministik sudah diperbaiki: 2FA yang tidak dikehendaki, SSR parsial, dan batas numerator `0000000`.
+Phase 16 memberi Superadmin akses global ke seluruh modul dan aksi SIPAK yang benar-benar tersedia, tanpa meniadakan state machine, ledger, transaksi, locking, validasi, audit trail, atau FK. Database development aktif telah berpindah dari SQLite ke MySQL 8.0.30 (`sipak`), sementara SQLite in-memory tetap menjadi konfigurasi test default dan MySQL menggunakan konfigurasi test terpisah (`sipak_testing`).
 
-Codebase lulus seluruh test PHP, PHPStan, Pint, build Vite, validasi Composer, audit dependensi, serta type-check TypeScript yang dijalankan serial setelah Wayfinder selesai digenerasi. Release masih bersyarat karena CI gagal pada formatting issue di luar scope, environment lokal masih development, MySQL target belum diuji, serta validasi browser/a11y belum tersedia.
+Tidak ada menu palsu untuk workflow Blueprint yang belum diimplementasikan. Approval Kasie, bulk sign-off Kepala UPTD, master alasan batal/rusak, dan UI audit khusus tetap di luar scope karena tidak memiliki route/workflow aktual.
 
-## Ruang Lingkup dan Metodologi Audit
+## B. Scope dan Keputusan
 
-Audit mencakup Blueprint, status fase terdahulu, riwayat commit Phase 08–14, migrations, enum, model, request, Gate, action, controller, rute, Wayfinder, halaman React, komponen shadcn/Radix, test, dependensi, konfigurasi, workflow CI, dan database SQLite lokal.
+- Sumber kebenaran yang diaudit: Blueprint SIPAK, route, Gate, action, controller, model, migration, test, navigation, konfigurasi database, dan schema MySQL aktual.
+- Superadmin adalah administrator global, bukan Petugas Loket virtual. `loket_id` Superadmin tetap `NULL`.
+- UI permission tidak menjadi otorisasi. Semua route mutasi tetap melewati middleware, Gate/FormRequest, dan action domain.
+- SQLite `database/database.sqlite` tidak dihapus atau diubah; satu akun Superadmin lokal dipindahkan secara non-destruktif ke MySQL.
+- Tidak ada dependency, perubahan arsitektur besar, atau workflow bisnis baru yang ditambahkan.
 
-Validasi dilakukan dengan inspeksi source dan schema, `route:list`, `migrate:status`, `db:show`, `EXPLAIN QUERY PLAN`, full test suite, build, formatter, static analysis, dependency audit, serta pemeriksaan konfigurasi tanpa menampilkan rahasia. Tidak ada klaim browser, screen reader, MySQL, atau deployment yang tidak benar-benar dijalankan.
+## C. Implementasi Superadmin
 
-## Baseline Implementasi Aktual
+### Otorisasi global
 
-- Laravel 13.29.0, PHP 8.3.23, Inertia Laravel 3.3.1, React/Inertia 3.7.0, Wayfinder 0.1.21, Fortify 1.39.0, Pest 4.7.8, Tailwind 4.3.3, dan Vite 8.2.2.
-- Database lokal adalah SQLite 3.40.0 dengan 24 tabel; migrasi 18/18 berstatus `Ran`.
-- Riwayat implementasi terakhir adalah Phase 08–14: verifikasi dua tahap, klarifikasi/re-verifikasi immutable, penerimaan Bendahara Barang, Buku Kendali, Laporan Pemakaian, PDF, XLSX, dan print.
-- Konfigurasi lokal aktif adalah `APP_ENV=local`, `APP_DEBUG=true`, SQLite, queue/cache/session database, dan mailer `log`.
+`Gate::before()` pada `AppServiceProvider` memberikan allow global hanya untuk `UserRole::Superadmin`; Gate spesifik seluruh role lain tetap eksplisit. Helper konteks pada `User` dipakai action domain agar bypass tidak berhenti di controller:
 
-## Status Kebutuhan Blueprint
+- konteks Loket untuk accept allocation, draft BAP, cancellation, dan klarifikasi;
+- pencipta/pembatal allocation;
+- verifier Tahap 1/Tahap 2;
+- penerimaan administratif Bendahara Barang.
 
-| Area Blueprint                                  | Status implementasi aktual       | Catatan                                                                                  |
-| ----------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| Username-only login, user aktif, RBAC           | Sesuai                           | Login dibatasi username, inactive user ditolak, rute dan Gate diuji.                     |
-| Box, Allocation, ledger-derived inventory       | Sesuai                           | Mutasi memakai transaksi, lock inventaris, range/overlap/sekuens diuji.                  |
-| BAP draft, submit, usage segment, batal/rusak   | Sesuai                           | Sumber data immutable setelah submit; cancellation tidak mengurangi ledger pemakaian.    |
-| Verifikasi Tahap 1 dan Tahap 2                  | Sesuai implementasi              | Pelaksana aktual adalah Petugas Penetapan lalu Petugas Verifikasi.                       |
-| Klarifikasi dan re-verifikasi                   | Sesuai                           | History attempt, respons, resolusi, dan reopen dipertahankan.                            |
-| Penerimaan Bendahara Barang                     | Sesuai implementasi              | `verified_phase_2` menjadi prasyarat sebelum `completed`.                                |
-| Buku Kendali, laporan, PDF/XLSX/print           | Sesuai implementasi              | Seluruhnya read-only dari BAP `completed`.                                               |
-| Persetujuan Kasie dan bulk sign-off Kepala UPTD | Belum ada                        | Enum peran ada, tetapi workflow approval/bulk sign-off belum diimplementasikan.          |
-| Master alasan batal/rusak                       | Belum ada                        | Alasan masih enum `Batal`/`Rusak`, bukan master data.                                    |
-| Audit log                                       | Sebagian                         | Audit domain tersedia dan dipakai action, tetapi belum ada modul UI/report audit khusus. |
-| Notifikasi operasional                          | Belum diverifikasi sebagai fitur | Tidak diklaim tersedia.                                                                  |
+Action tetap mengunci record, mengecek status saat transaksi, memakai `DB::transaction(..., attempts: 3)`, dan mencatat actor Superadmin pada audit log. Superadmin tidak dapat memaksa transisi state yang tidak sah.
 
-Perbedaan Blueprint yang belum diwujudkan tidak ditambal otomatis karena memerlukan keputusan proses bisnis dan otoritas operasional.
+### Cakupan aktual
 
-## Role dan Manajemen Pengguna
+Superadmin dapat membuka dan melakukan aksi yang tersedia pada Dashboard, User Management, inventaris SKPD, Box, Allocation, BAP, BAP batal/rusak, verifikasi Tahap 1 dan 2, klarifikasi/re-verifikasi, penerimaan administrasi, Buku Kendali, Laporan Pemakaian, PDF, dan Excel.
 
-`UserRole` memuat Superadmin, Petugas Loket, Petugas Penetapan, Kasie Penetapan, Petugas Verifikasi, Kasie Verifikasi, Bendahara Barang, dan Kepala UPTD. Manajemen user hanya dapat diakses Superadmin; penugasan Loket, aktivasi/nonaktif, reset password, audit, dan pembatasan akses sesudah akun dinonaktifkan tercakup feature test.
+Pada form buat BAP, Superadmin memilih Loket eksplisit sebagai context request (`loket_id`). Context tersebut tidak dipersist ke akun, dan form tidak dapat dikirim sebelum Loket dipilih. Petugas Loket biasa tetap memakai Loket akun sendiri serta dilarang mengirim `loket_id` buatan klien.
 
-Server tetap menjadi sumber otorisasi. Visibility `auth.permissions` hanya presentasi dan tidak menggantikan Gate, middleware, atau `FormRequest::authorize()`.
+## D. Integrasi UI dan Navigasi
 
-## Authentication dan Security Hardening
+- Navigation sekarang memakai route Wayfinder aktual untuk Inventaris SKPD, Box SKPD, dan Alokasi SKPD.
+- Entry dengan `availability: planned` disembunyikan dari navigasi; tidak ada CTA untuk modul yang belum memiliki workflow/rute.
+- BAP form memakai `Form` Inertia v3 dengan object Wayfinder langsung, bukan API `.form()` yang tidak tersedia pada generator saat ini.
+- Wayfinder diregenerasi dan build Vite lulus.
 
-### Perbaikan P1 yang diterapkan
+Validasi browser visual, mobile, light/dark, keyboard, dan a11y tidak tersedia pada environment ini sehingga belum dapat diklaim PASS.
 
-- Fortify 2FA dinonaktifkan dengan `features => []`; limiter dan view 2FA dihapus.
-- Halaman, komponen, hook, request, serta rute Wayfinder 2FA yang tidak lagi dipakai dihapus.
-- Endpoint `GET /two-factor-challenge` dan `POST /user/two-factor-authentication` sekarang diuji menghasilkan `404`.
-- Passkey tetap paket/migrasi dormant tanpa rute atau integrasi aplikasi aktif. Dependensi tidak dihapus karena perubahan dependensi tidak termasuk mandat fase ini.
-- `inertia.ssr.enabled` diubah menjadi `false`. Bundle `bootstrap/ssr/ssr.mjs` dan proses SSR tidak tersedia, sehingga konfigurasi sebelumnya merupakan SSR parsial yang berisiko menimbulkan asumsi deployment keliru.
+## E. Test Superadmin
 
-### Hasil audit autentikasi
+`tests/Feature/SuperadminAccessTest.php` menutup direct HTTP dan action matrix berikut:
 
-- Registrasi publik, reset password berbasis email, dan verifikasi email tidak tersedia.
-- Login memakai username case-normalized, password hash, rate limit lima percobaan, dan akun aktif.
-- Password update tetap dilindungi password confirmation.
-- Tidak ada rute 2FA atau passkey yang terdaftar setelah hardening.
-- Environment lokal tidak boleh dipakai sebagai environment production karena `APP_DEBUG=true`. Nilai production wajib disediakan melalui environment deployment, bukan dengan mengubah `.env` lokal pengembangan.
+- Superadmin tanpa Loket memilih Loket, membuat Box dan Allocation, menerima serta membatalkan Allocation, membuat/mengubah/mengajukan BAP, mencatat pembatalan, menjalankan discrepancy–klarifikasi–re-verifikasi Tahap 1, Tahap 2, dan penerimaan administratif.
+- User Management: create, update/nonaktif, dan reset password oleh Superadmin.
+- Semua halaman/modul aktual dapat dibuka oleh Superadmin, termasuk output PDF/Excel.
+- Audit receipt menyimpan `actor_id` Superadmin dan akun tetap tanpa Loket.
+- Role non-Superadmin tetap ditolak dari mutasi lintas-kewenangan.
 
-## Workflow BAP, Verifikasi, Klarifikasi, dan Finalisasi
+Hasil focused test pada MySQL: **2 test, 80 assertion, PASS**. Suite lengkap juga lulus di SQLite dan MySQL.
 
-Alur aktual adalah `draft → submitted → verifikasi tahap 1 → verifikasi tahap 2 → verified_phase_2 → completed`, dengan cabang klarifikasi dan attempt re-verifikasi baru. `completed` hanya dapat dibuat oleh penerimaan administratif Bendahara Barang setelah kedua verification record lulus dan tidak ada klarifikasi aktif.
+## F. Database MySQL dan Migrasi
 
-Action memuat transaksi dengan `attempts: 3`, `lockForUpdate()`, revalidasi state di dalam transaksi, dan audit domain. BAP submitted, usage segment, cancellation, checklist/discrepancy, klarifikasi, serta receipt tidak dimutasi diam-diam pada tahap verifikasi atau klarifikasi.
+### Konfigurasi dan schema
 
-### Temuan P2: detail verifikasi di luar antrean
+- `.env` development dan `.env.example` memakai `DB_CONNECTION=mysql`, host `127.0.0.1`, port `3306`, database `sipak`, dan charset/collation konfigurasi Laravel `utf8mb4`/`utf8mb4_unicode_ci`.
+- Script bootstrap Composer tidak lagi membuat file SQLite secara paksa.
+- `phpunit.xml` tetap SQLite in-memory. `phpunit.mysql.xml` menargetkan database khusus `sipak_testing` tanpa mengubah default CI.
+- Semua 18 migration berstatus `Ran` pada MySQL. Nama index/FK panjang diperpendek pada tiga migration agar tetap di bawah batas identifier MySQL.
+- Seluruh tabel aplikasi MySQL memakai InnoDB dan `utf8mb4_unicode_ci`.
 
-`showForStage()` hanya memeriksa Gate role tahap. Berbeda dari halaman indeks yang memfilter `queueBapStatuses()`, endpoint detail belum secara eksplisit menolak BAP yang berada di luar antrean tahap. Mutasi tetap aman karena action start/complete melakukan revalidasi state, tetapi role verifier dapat membaca detail BAP di luar antrean bila mengetahui ID.
+### Data awal dan akses login
 
-Keputusan yang dibutuhkan: apakah riwayat lintas-status memang boleh dibaca seluruh verifier. Jika tidak, tambahkan scope stage/status di endpoint detail dan test `404`/`403` untuk BAP di luar antrean. Tidak diperbaiki otomatis karena aturan akses riwayat belum diputuskan oleh Blueprint.
+Sebelum migrasi, SQLite hanya memiliki satu user bisnis: Superadmin aktif tanpa Loket; tabel Loket, Box, Allocation, BAP, verification, clarification, dan audit log kosong. Akun tersebut dipindahkan ke MySQL dengan username/role/status yang sama dan hash password yang dibandingkan identik tanpa menampilkan rahasia. Hasil: `global_administrator=true`, `loket_id=NULL`, `is_active=true`.
 
-## Inventory, Nomeratur, dan Integritas Data
+Tidak ada password default baru yang dibuat atau diungkapkan. Login memakai kredensial lokal Superadmin yang telah ada sebelumnya; plaintext password tidak tersedia untuk diuji ulang secara otomatis. `DatabaseSeeder` tidak dijalankan dan saat ini hanya membuat `Test User`, bukan bootstrap Superadmin production.
 
-Box, Allocation, BAP, usage segment, dan cancellation tetap ledger-derived. Lock inventaris ID 1, validasi overlap/sekuens, serta transaksi menjaga mutasi concurrency pada jalur aplikasi. Laporan tidak menciptakan stok mutable atau duplicate ledger.
+### Integrity schema MySQL
 
-### Perbaikan P1 batas numerator
+- FK aktif untuk allocation, BAP, cancellation, verification, clarification response/resolution, receipt (`received_by`), dan audit actor.
+- Check constraint aktif untuk range/quantity/status Box, Allocation, BAP, usage segment, dan alasan cancellation.
+- Percobaan insert BAP orphan pada `sipak_testing` ditolak MySQL dengan error FK 1452 (`baps_loket_id_foreign`); query sisa row menghasilkan `0`.
+- Perbaikan assertion portability menjaga test immutability ketat atas raw data tersimpan, bukan representasi in-memory SQLite. `DATE` MySQL (`Y-m-d`) dan agregat `SUM()` MySQL yang string kini dinormalisasi hanya pada test.
 
-Sebelumnya request dan action menerima `0000000`. Semua jalur tulis kini menetapkan minimum `0000001`:
+## G. Security, Integrity, dan Timezone
 
-- registrasi Box;
-- alokasi Box ke Loket;
-- pembuatan BAP; dan
-- pembaruan draft BAP.
+Tidak ada bypass integrity untuk Superadmin: allocation/BAP tetap ledger-derived, BAP submitted tetap immutable, clarification/re-verification tetap memakai attempt baru, dan receipt tidak mengubah sumber usage/cancellation/verification.
 
-Validasi HTTP memberi pesan `Nomeratur awal minimal 0000001.` dan action tetap menegakkan aturan bila dipanggil di luar controller. Test endpoint dan test domain action mencakup batas nol. Tampilan tujuh digit tetap dipertahankan.
+Konfigurasi aplikasi masih `app.timezone=UTC`; MySQL global dan session timezone adalah `SYSTEM`. `service_date` adalah cast `date`, dibentuk dan dirender sebagai `Y-m-d`, sehingga laporan periodik tidak melakukan konversi timestamp. Timestamp audit/workflow tetap memakai `now()` aplikasi.
 
-### Catatan P2
+**Technical decision required:** timezone operasional (misalnya Asia/Makassar) belum ditetapkan Blueprint. Jangan mengubah timezone konfigurasi atau melakukan normalisasi data tanpa keputusan cut-off hari pelayanan, dampak laporan, dan rencana migrasi. Pengujian lintas tengah malam/timezone belum dilakukan.
 
-Request Box dan Allocation masih mengharuskan `numerator_end > numerator_start`, sehingga range satu set tidak dapat dibuat melalui HTTP walaupun action/domain dapat memahami range inklusif. Kebutuhan bisnis “satu set” belum cukup eksplisit untuk mengubah kontrak ini otomatis.
+## H. Laporan dan Performance MySQL
 
-## Laporan, Buku Kendali, dan Output
+Laporan Pemakaian, PDF, dan Excel tetap read-only terhadap BAP `completed`; suite MySQL membuktikan sumber tidak termutasi. `EXPLAIN` MySQL menunjukkan indeks tersedia dan digunakan untuk Allocation (`loket_id,status`), Verification (`stage,status,started_at`), dan Clarification (`bap_id,status`).
 
-Buku Kendali dan Laporan Pemakaian memakai BAP `completed` sebagai scope read-only. Aggregate menghindari double count dengan tidak menggabungkan BAP langsung ke usage segment/cancellation. PDF, XLSX, dan print tidak membuat snapshot, tabel laporan, atau mutasi sumber. Nomeratur Excel diformat tujuh digit.
+Untuk query report BAP, MySQL mengenali `baps_status_service_date_index`, tetapi database development tanpa data memilih indeks alternatif dengan prefix `status`. Ini membuktikan DDL/compatibility, bukan throughput production. Benchmark dengan volume data realistis dan uji concurrency paralel belum dilakukan.
 
-Audit SQLite membuktikan query laporan berdasarkan status dan tanggal memakai `baps_status_service_date_index`. Database lokal tidak memiliki data BAP nyata, sehingga hasil ini membuktikan rencana query, bukan throughput produksi.
+## I. Temuan Audit dan Technical Debt
 
-## Route, Action, dan Wayfinder
+| ID | Prioritas | Status | Temuan / tindak lanjut |
+| --- | --- | --- | --- |
+| P2-01 | P2 | Open | `npm run types:check` masih gagal pada 12 pemanggilan `.form()` Wayfinder di halaman di luar perubahan Phase 16. Tidak ada error TypeScript baru dari implementasi ini. |
+| P2-02 | P2 | Open | `npm run check` masih menemukan formatting pada 11 file pre-existing di luar scope. Jangan jalankan formatter global tanpa review. |
+| P2-03 | P2 | Open | Browser/a11y/responsive/light-dark/print visual belum tervalidasi di environment ini. |
+| P2-04 | P2 | Open | Uji race/concurrency paralel MySQL untuk lock inventory dan verification belum dilakukan; locking action dan suite serial telah diuji. |
+| P2-05 | P2 | Open decision | Tetapkan timezone operasional sebelum perubahan konfigurasi UTC atau interpretasi timestamp laporan. |
+| P2-06 | P2 | Open | `DatabaseSeeder` bukan bootstrap production yang aman karena hanya membuat Test User; provisioning akun awal harus dari migrasi backup atau manajemen user terotorisasi. |
+| P3-01 | P3 | Open business gap | Approval Kasie, bulk sign-off Kepala UPTD, master alasan, dan UI audit belum memiliki workflow/rute aktual. |
 
-Rute mutasi inventory/BAP/verification menggunakan auth, active-user enforcement, Gate atau `FormRequest::authorize()`, dan action domain. Test mencakup denial role, cross-Loket, state invalid, duplicate completion, serta client-supplied field yang dilarang.
+## Matriks Quality Gate Phase 16
 
-Wayfinder digenerasi ulang setelah perubahan konfigurasi Fortify. Tidak ada lagi direktori atau ekspor `resources/js/routes/two-factor`; build menghasilkan kembali varian `.form()` yang diperlukan halaman Inertia.
+| Pemeriksaan | Hasil | Bukti |
+| --- | --- | --- |
+| `php artisan test --compact` | PASS | 158 test, 1.336 assertion (SQLite). |
+| `vendor/bin/pest --configuration=phpunit.mysql.xml --compact` | PASS | 158 test, 1.336 assertion (MySQL). |
+| Superadmin feature test pada MySQL | PASS | 2 test, 80 assertion. |
+| MySQL migrations | PASS | 18/18 `Ran`; schema InnoDB, FK, check constraint, dan index diperiksa. |
+| `vendor/bin/phpstan analyse` | PASS | 0 error. |
+| `vendor/bin/pint --dirty --format agent` | PASS | Tidak ada pelanggaran PHP style pada perubahan. |
+| `npm run build` | PASS | 2.363 modul ditransform; Wayfinder type generation berhasil. |
+| `npm run types:check` | FAIL (pre-existing) | 12 error `.form()` Wayfinder di file di luar scope; tidak ada error baru Phase 16. |
+| `npm run check` | FAIL (pre-existing) | 11 file formatting di luar scope; file BAP form yang diubah telah diformat terarah. |
+| `composer validate --strict` | PASS | `composer.json` valid. |
+| `composer audit --format=json` | PASS | 0 advisory, 0 abandoned package. |
+| `npm audit --omit=dev --json` | PASS | 0 vulnerability production dependency. |
+| `git diff --check` | PASS | Tidak ada whitespace error setelah final check. |
+| Browser/a11y/parallel locking | NOT VERIFIED | Tool/browser dan harness concurrency paralel tidak tersedia. |
 
-## Database, Migration, dan Audit Trail
+## J. Kesimpulan dan Langkah Berikutnya
 
-Migrasi lokal seluruhnya selesai. Schema memuat constraint/index untuk kebutuhan yang diuji, termasuk indeks BAP `status, service_date`, uniqueness cancellation, serta uniqueness BAP per Loket/tanggal. Database target MySQL tidak tersedia pada audit ini; kompatibilitas DDL MySQL, check constraint, dan locking production belum dapat diklaim.
+**Phase 16 selesai untuk development MySQL lokal.** Superadmin memiliki akses global nyata ke seluruh workflow SIPAK yang tersedia, tetap teridentifikasi di audit log, dan tidak diberi Loket permanen. Migration MySQL, integrity schema, data Superadmin awal, full suite SQLite, dan full suite MySQL telah terbukti.
 
-`AuditLog` bersifat polymorphic dengan actor, event, old values, dan new values. Action inventory, BAP, verification, klarifikasi, serta penerimaan administratif mencatat event domain. Tidak ada pembuktian UI audit, retensi, backup, observability, atau prosedur pemulihan production.
-
-## UI/UX dan Aksesibilitas
-
-Build TypeScript/Vite lulus. Komponen aktif menggunakan shadcn/Radix dan tidak ada rute 2FA tersisa. Masih terdapat token warna Tailwind hard-coded pada beberapa komponen/auth badge; ini technical debt P3 untuk konsistensi tema, bukan bukti kegagalan fungsi.
-
-Browser Pest dan browser automation tidak tersedia dalam environment audit. Karena itu responsif desktop/mobile, dark mode aktual, keyboard navigation, screen reader, print preview fisik, dan accessibility scan berstatus **BELUM DIVERIFIKASI**, bukan PASS.
-
-## Quality Gate dan Release Verification
-
-| Pemeriksaan                                    | Hasil                       | Bukti / catatan                                                                       |
-| ---------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
-| `php artisan test --compact`                   | PASS                        | 162 test, 1.274 assertion.                                                            |
-| Test terdampak hardening                       | PASS                        | 41 test, 216 assertion.                                                               |
-| `vendor/bin/phpstan analyse`                   | PASS                        | 0 error.                                                                              |
-| `vendor/bin/pint --test`                       | PASS                        | Tidak ada pelanggaran PHP style.                                                      |
-| `composer validate --strict`                   | PASS                        | `composer.json` valid.                                                                |
-| `composer audit --format=json`                 | PASS                        | 0 advisory, 0 abandoned package.                                                      |
-| `npm audit --omit=dev --json`                  | PASS                        | 0 vulnerability production dependency.                                                |
-| `npm run types:check` serial setelah build     | PASS                        | TypeScript tanpa error.                                                               |
-| `npm run build`                                | PASS                        | Vite dan generation Wayfinder berhasil.                                               |
-| `git diff --check`                             | PASS                        | Tidak ada whitespace error.                                                           |
-| `php artisan config:cache` lalu `config:clear` | PASS                        | Konfigurasi dapat dicache dan dipulihkan.                                             |
-| `npm run check`                                | FAIL                        | Formatting issue pada 11 source file di luar scope setelah status file ini diformat.  |
-| `composer ci:check`                            | FAIL                        | Berhenti pada `npm run check`; workflow CI memang memanggil script ini.               |
-| SSR server health check                        | TIDAK BERLAKU / tidak jalan | Server SSR tidak berjalan, dan konfigurasi aplikasi sekarang secara sengaja disabled. |
-| MySQL migration/query/locking                  | BELUM DIVERIFIKASI          | Hanya SQLite lokal yang diuji.                                                        |
-| Browser/a11y                                   | BELUM DIVERIFIKASI          | Tidak ada Browser Pest/browser automation.                                            |
-
-Catatan: type-check yang dijalankan paralel dengan build sempat membaca keluaran Wayfinder antargenerasi tanpa `.form()`. Pemeriksaan serial setelah build lulus; hasil paralel tersebut bukan defect source.
-
-## Temuan Audit dan Prioritas
-
-| ID    | Prioritas            | Status            | Temuan dan tindak lanjut                                                                                                                                                                                                                                            |
-| ----- | -------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1-01 | P1                   | Fixed             | 2FA Fortify aktif padahal tidak digunakan. Dinonaktifkan, route/UI/support code dihapus, dan 404 diuji.                                                                                                                                                             |
-| P1-02 | P1                   | Fixed             | SSR enabled tanpa bundle/proses SSR. Diubah menjadi disabled dan dikunci test konfigurasi.                                                                                                                                                                          |
-| P1-03 | P1                   | Fixed             | `0000000` diterima sebagai numerator. Minimum `0000001` ditegakkan pada request dan action.                                                                                                                                                                         |
-| P1-04 | P1 release condition | Open              | Environment lokal memakai `APP_ENV=local` dan `APP_DEBUG=true`; jangan deploy konfigurasi ini. Provisioning production wajib menetapkan `APP_ENV=production`, `APP_DEBUG=false`, key/secret, mail, queue, cache, session, log, HTTPS, dan trusted proxy yang tepat. |
-| P2-01 | P2                   | Open              | CI gagal karena 11 formatting issue existing di luar scope. Jalankan formatter terarah/review pada file tersebut sebelum merge/release.                                                                                                                             |
-| P2-02 | P2                   | Open              | MySQL target belum menjalankan migration, test, EXPLAIN, atau uji transaction locking.                                                                                                                                                                              |
-| P2-03 | P2                   | Open decision     | Endpoint detail verifikasi belum menegakkan queue status seperti halaman indeks. Putuskan kebijakan akses history lalu tambah scope/test bila perlu.                                                                                                                |
-| P2-04 | P2                   | Open decision     | Range Box/Allocation satu set ditolak HTTP karena end harus lebih besar dari start.                                                                                                                                                                                 |
-| P2-05 | P2                   | Open business gap | Approval Kasie, bulk sign-off Kepala UPTD, master alasan batal/rusak, dan UI audit belum memiliki kontrak bisnis yang dapat diimplementasikan aman.                                                                                                                 |
-| P3-01 | P3                   | Open              | Hard-coded color utilities tersisa pada beberapa komponen; konsolidasikan dengan token tema ketika ada fase UI.                                                                                                                                                     |
-| P3-02 | P3                   | Open              | Node lokal 22.17.0 berada di bawah engine Vite Plus `^22.18.0`; build lulus, tetapi upgrade Node diperlukan untuk baseline developer yang deterministik.                                                                                                            |
-
-Tidak ada P0 ditemukan.
-
-## Perubahan yang Diterapkan pada Phase 15
-
-- Menonaktifkan dan menghapus permukaan 2FA aktif tanpa menghapus migrasi/data historis atau dependency secara spekulatif.
-- Menonaktifkan SSR yang belum benar-benar dideploy.
-- Memperketat batas numerator menjadi `0000001–9999999` pada empat request dan empat action domain.
-- Menambah regression test hardening 2FA, SSR disabled, HTTP boundary numerator, dan action boundary numerator.
-- Meregenerasi Wayfinder dan memverifikasi tidak ada rute 2FA tersisa.
-
-## Technical Debt dan Keputusan yang Dibutuhkan
-
-1. Putuskan apakah Kasie approval dan bulk sign-off Kepala UPTD wajib sebelum mengubah workflow yang sudah stabil.
-2. Putuskan apakah verifier boleh melihat detail BAP di luar antrean masing-masing.
-3. Putuskan apakah range satu set valid untuk Box dan Allocation.
-4. Tetapkan timezone operasional. Konfigurasi aplikasi masih UTC; jangan mengubahnya tanpa keputusan cut-off periode dan migrasi dampak data.
-5. Jika audit export, dokumen resmi, snapshot inventory, atau notifikasi diperlukan, tetapkan actor, event, retention, format, approval, dan otoritas bisnis terlebih dahulu.
-
-## Checklist Deployment Wajib
-
-- [ ] Sediakan environment production terpisah dengan `APP_DEBUG=false`, `APP_ENV=production`, `APP_KEY` baru/terkelola, HTTPS, `APP_URL`, mail, queue, cache, session, logging, dan secret yang benar.
-- [ ] Uji backup, restore, rotasi log, monitoring, alert, dan kebijakan retensi di lingkungan production-like.
-- [ ] Provision MySQL target; jalankan migration pada salinan aman, full test, EXPLAIN query laporan, serta uji locking/concurrency inventory dan verification.
-- [ ] Selesaikan formatting issue agar `npm run check` dan `composer ci:check` lulus.
-- [ ] Upgrade Node lokal ke minimal 22.18.0 atau gunakan environment terkelola yang memenuhi engine Vite Plus.
-- [ ] Jalankan validasi browser manual/otomatis: desktop/mobile, light/dark, keyboard, focus/error state, a11y, dan print preview.
-- [ ] Tinjau P2-03 dan P2-04 bersama pemilik proses bisnis.
-
-## Rekomendasi dan Status Readiness
-
-**READY WITH CONDITIONS.** Tidak ada P0, dan P1 pada codebase telah diperbaiki. Namun status ini hanya menyatakan codebase lokal telah melewati regression/security gate yang tersedia. Ia bukan persetujuan deploy production.
-
-Release/merge sebaiknya ditahan sampai formatting CI diselesaikan. Deployment production wajib menunggu checklist environment dan validasi MySQL/backup/observability/browser di atas. Tidak ada Phase 16 atau fitur bisnis baru yang dikerjakan dalam audit ini.
+Sebelum deployment production: ganti kredensial MySQL lokal/root dengan secret terkelola dan least-privilege user, lakukan backup/restore rehearsal, tetapkan timezone operasional, selesaikan debt TypeScript/formatting agar CI hijau, dan uji browser serta concurrency pada lingkungan production-like. Tidak ada Phase 17 atau fitur bisnis baru yang dikerjakan dalam fase ini.

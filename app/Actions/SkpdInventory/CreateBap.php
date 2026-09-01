@@ -36,7 +36,7 @@ class CreateBap
             ]);
         }
 
-        if ($actor->loket_id !== $loket->id) {
+        if (! $actor->canOperateAtLoket($loket->id)) {
             throw ValidationException::withMessages([
                 'loket_id' => 'BAP hanya dapat dibuat oleh Petugas Loket yang dituju.',
             ]);

@@ -141,7 +141,7 @@ test('Petugas Loket records an individual cancellation without changing BAP usag
     expect($bap->refresh()->total_usage)->toBe(8)
         ->and($bap->normalUsageQuantity())->toBe(7)
         ->and($allocation->refresh()->status)->toBe(SkpdAllocationStatus::Accepted)
-        ->and($allocation->usageSegments()->sum('quantity'))->toBe(8);
+        ->and((int) $allocation->usageSegments()->sum('quantity'))->toBe(8);
 
     $this->actingAs($petugas)
         ->get(route('baps.show', $bap))

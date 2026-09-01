@@ -27,7 +27,7 @@ class AcceptSkpdAllocation
                 ]);
             }
 
-            if ($actor->loket_id !== $lockedAllocation->loket_id) {
+            if (! $actor->canOperateAtLoket($lockedAllocation->loket_id)) {
                 throw ValidationException::withMessages([
                     'loket_id' => 'Alokasi hanya dapat diterima oleh Petugas Loket yang dituju.',
                 ]);

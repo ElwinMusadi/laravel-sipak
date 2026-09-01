@@ -8,7 +8,6 @@ use App\Models\Bap;
 use App\Models\BapCancellation;
 use App\Models\BapUsageSegment;
 use App\Models\User;
-use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -34,11 +33,7 @@ class RecordBapCancellation
                 ]);
             }
 
-            if (
-                $actor->role !== UserRole::PetugasLoket
-                || $actor->loket_id !== $lockedBap->loket_id
-                || $actor->id !== $lockedBap->created_by
-            ) {
+            if (! $actor->canManageDraftBap($lockedBap)) {
                 throw ValidationException::withMessages([
                     'bap' => 'Batal atau rusak hanya dapat dicatat oleh pembuat BAP pada Loket pemilik BAP.',
                 ]);

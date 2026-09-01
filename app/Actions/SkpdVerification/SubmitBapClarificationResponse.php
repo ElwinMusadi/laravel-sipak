@@ -9,7 +9,6 @@ use App\Models\Bap;
 use App\Models\BapClarificationRequest;
 use App\Models\BapClarificationResponse;
 use App\Models\User;
-use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,7 +25,7 @@ class SubmitBapClarificationResponse
                 ->findOrFail($clarification->id);
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($lockedClarification->bap_id);
 
-            if ($actor->role !== UserRole::PetugasLoket || $actor->loket_id !== $lockedBap->loket_id) {
+            if (! $actor->canOperateAtLoket($lockedBap->loket_id)) {
                 throw ValidationException::withMessages([
                     'clarification' => 'Hanya Petugas Loket pemilik BAP yang dapat memberikan tanggapan.',
                 ]);

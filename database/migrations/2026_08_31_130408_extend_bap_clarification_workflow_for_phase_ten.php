@@ -34,22 +34,38 @@ return new class extends Migration
             $table->timestamp('responded_at');
             $table->timestamps();
 
-            $table->unique(['bap_clarification_request_id', 'round']);
-            $table->index(['bap_clarification_request_id', 'responded_at']);
+            $table->unique(
+                ['bap_clarification_request_id', 'round'],
+                'bap_clarification_responses_request_round_unique',
+            );
+            $table->index(
+                ['bap_clarification_request_id', 'responded_at'],
+                'bap_clarification_responses_request_responded_index',
+            );
         });
 
         Schema::create('bap_clarification_resolutions', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('bap_clarification_request_id')->constrained()->restrictOnDelete();
-            $table->foreignId('bap_clarification_response_id')->constrained()->restrictOnDelete();
+            $table->foreignId('bap_clarification_request_id')
+                ->constrained(indexName: 'bap_clarification_resolutions_request_foreign')
+                ->restrictOnDelete();
+            $table->foreignId('bap_clarification_response_id')
+                ->constrained(indexName: 'bap_clarification_resolutions_response_foreign')
+                ->restrictOnDelete();
             $table->foreignId('resolved_by')->constrained('users')->restrictOnDelete();
             $table->string('outcome', 32);
             $table->text('notes');
             $table->timestamp('resolved_at');
             $table->timestamps();
 
-            $table->unique('bap_clarification_response_id');
-            $table->index(['bap_clarification_request_id', 'outcome']);
+            $table->unique(
+                'bap_clarification_response_id',
+                'bap_clarification_resolutions_response_unique',
+            );
+            $table->index(
+                ['bap_clarification_request_id', 'outcome'],
+                'bap_clarification_resolutions_request_outcome_index',
+            );
         });
 
         if (DB::getDriverName() === 'mysql') {

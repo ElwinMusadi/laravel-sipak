@@ -395,7 +395,6 @@ test('roles outside Petugas Verifikasi cannot access or start Phase 2 through di
     'Petugas Loket' => UserRole::PetugasLoket,
     'Petugas Penetapan' => UserRole::PetugasPenetapan,
     'Bendahara Barang' => UserRole::BendaharaBarang,
-    'Superadmin' => UserRole::Superadmin,
 ]);
 
 test('only the Phase 2 verifier who started the BAP can complete it', function () {

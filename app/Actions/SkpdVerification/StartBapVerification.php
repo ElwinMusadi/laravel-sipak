@@ -22,7 +22,7 @@ class StartBapVerification
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
             $previousStatus = $lockedBap->status;
 
-            if ($actor->role !== $stage->verifierRole()) {
+            if (! $actor->canVerifyStage($stage)) {
                 throw ValidationException::withMessages([
                     'bap' => "{$stage->label()} hanya dapat dimulai oleh {$stage->verifierRole()->label()}.",
                 ]);

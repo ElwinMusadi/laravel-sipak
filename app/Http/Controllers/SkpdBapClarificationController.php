@@ -38,7 +38,7 @@ class SkpdBapClarificationController extends Controller
                 'verification.discrepancies:id,bap_verification_id,type,expected_value,actual_value,difference,notes',
                 'requester:id,name',
             ])
-            ->when($actor->role === UserRole::PetugasLoket, function ($query) use ($actor): void {
+            ->when(! $actor->isGlobalAdministrator() && $actor->role === UserRole::PetugasLoket, function ($query) use ($actor): void {
                 $query
                     ->whereHas('bap', fn ($bapQuery) => $bapQuery->where('loket_id', $actor->loket_id))
                     ->whereIn('status', [
@@ -46,7 +46,7 @@ class SkpdBapClarificationController extends Controller
                         BapClarificationStatus::Reopened,
                     ]);
             })
-            ->when($actor->role !== UserRole::PetugasLoket, function ($query) use ($actor): void {
+            ->when(! $actor->isGlobalAdministrator() && $actor->role !== UserRole::PetugasLoket, function ($query) use ($actor): void {
                 $stage = $actor->role === UserRole::PetugasPenetapan
                     ? BapVerificationStage::Phase1
                     : BapVerificationStage::Phase2;
@@ -185,6 +185,14 @@ class SkpdBapClarificationController extends Controller
      */
     private function queueDataFor(User $actor): array
     {
+        if ($actor->isGlobalAdministrator()) {
+            return [
+                'title' => 'Klarifikasi Global',
+                'description' => 'Tinjau seluruh klarifikasi lintas Loket dan tahap tanpa mengubah data sumber BAP.',
+                'opens_for_loket' => false,
+            ];
+        }
+
         return match ($actor->role) {
             UserRole::PetugasLoket => [
                 'title' => 'Klarifikasi Saya',

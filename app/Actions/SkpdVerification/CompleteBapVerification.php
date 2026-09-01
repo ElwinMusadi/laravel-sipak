@@ -58,7 +58,7 @@ class CompleteBapVerification
                 ]);
             }
 
-            if ($actor->role !== $stage->verifierRole() || $verification->verifier_id !== $actor->id) {
+            if (! $actor->canVerifyStage($stage) || $verification->verifier_id !== $actor->id) {
                 throw ValidationException::withMessages([
                     'bap' => "Hanya verifier {$stage->label()} yang memulai pemeriksaan ini dapat menyelesaikannya.",
                 ]);

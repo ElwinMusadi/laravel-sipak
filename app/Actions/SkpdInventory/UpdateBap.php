@@ -40,7 +40,7 @@ class UpdateBap
 
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
 
-            if ($actor->loket_id !== $lockedBap->loket_id || $actor->id !== $lockedBap->created_by) {
+            if (! $actor->canManageDraftBap($lockedBap)) {
                 throw ValidationException::withMessages([
                     'loket_id' => 'Hanya pembuat BAP pada Loket yang sama yang dapat memperbarui draft.',
                 ]);

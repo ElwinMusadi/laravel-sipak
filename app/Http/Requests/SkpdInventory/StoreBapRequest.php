@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\SkpdInventory;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -18,12 +19,17 @@ class StoreBapRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
+        $actor = $this->user();
+        $isGlobalAdministrator = $actor instanceof User && $actor->isGlobalAdministrator();
+
         return [
-            'loket_id' => ['prohibited'],
+            'loket_id' => $isGlobalAdministrator
+                ? ['required', 'integer', 'exists:lokets,id']
+                : ['prohibited'],
             'service_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'numerator_start' => ['required', 'string', 'regex:/^\d{7}$/'],
             'numerator_end' => ['required', 'string', 'regex:/^\d{7}$/'],

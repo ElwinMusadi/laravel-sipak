@@ -361,7 +361,7 @@ test('roles outside the inventory workflow cannot access inventory pages', funct
         ->assertForbidden();
 });
 
-test('superadmin receives central oversight without mutation permission', function () {
+test('superadmin receives central oversight with mutation permission', function () {
     $superadmin = User::factory()->create(['role' => UserRole::Superadmin]);
 
     $this->actingAs($superadmin)
@@ -371,7 +371,7 @@ test('superadmin receives central oversight without mutation permission', functi
             ->component('skpd/inventory')
             ->where('scope', 'central')
             ->where('auth.permissions.viewCentralSkpdInventory', true)
-            ->where('auth.permissions.manageSkpdInventory', false)
+            ->where('auth.permissions.manageSkpdInventory', true)
             ->etc(),
         );
 
@@ -382,5 +382,10 @@ test('superadmin receives central oversight without mutation permission', functi
             'numerator_end' => '0582620',
             'received_at' => '2026-08-30',
         ])
-        ->assertForbidden();
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('skpd_boxes', [
+        'box_number' => 'BOX-SUPERADMIN-BYPASS',
+        'created_by' => $superadmin->id,
+    ]);
 });

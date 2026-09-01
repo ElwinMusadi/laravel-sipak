@@ -1,4 +1,4 @@
-import { Form, Link } from '@inertiajs/react';
+import { Form, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import SkpdBapController from '@/actions/App/Http/Controllers/SkpdBapController';
 import InputError from '@/components/input-error';
@@ -11,7 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { index } from '@/routes/baps';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { create, index } from '@/routes/baps';
 
 type Allocation = {
     id: number;
@@ -30,7 +37,8 @@ type Props = {
         online_usage_count: number;
         loket: { id: number; name: string };
     };
-    loket?: { id: number; name: string };
+    loket?: { id: number; name: string } | null;
+    lokets?: { id: number; name: string }[];
     defaultServiceDate?: string;
     expectedNumeratorStart?: number | null;
     allocations?: Allocation[];
@@ -58,6 +66,7 @@ export function BapForm({
     mode,
     bap,
     loket,
+    lokets = [],
     defaultServiceDate,
     expectedNumeratorStart,
     allocations = [],
@@ -87,30 +96,87 @@ export function BapForm({
         totalUsage !== null && onlineIsValid && onlineUsage <= totalUsage
             ? totalUsage - onlineUsage
             : null;
-    const formProps =
+    const formAction =
         mode === 'create'
-            ? SkpdBapController.store.form()
-            : SkpdBapController.update.form(bap?.id ?? 0);
+            ? SkpdBapController.store()
+            : SkpdBapController.update(bap?.id ?? 0);
 
     return (
         <div className="grid max-w-5xl gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
             <Card>
                 <CardContent>
-                    <Form {...formProps} className="grid gap-6">
+                    <Form action={formAction} className="grid gap-6">
                         {({ errors, processing }) => (
                             <>
                                 <section className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label>Loket</Label>
-                                        <div className="bg-muted rounded-xl px-3 py-2.5 text-sm font-medium">
-                                            {formLoket?.name ??
-                                                'Loket tidak tersedia'}
-                                        </div>
-                                        <p className="text-muted-foreground text-xs">
-                                            Loket ditetapkan dari akun Petugas
-                                            dan tidak dapat diubah dari form
-                                            ini.
-                                        </p>
+                                        <Label htmlFor="loket_id">Loket</Label>
+                                        {mode === 'create' &&
+                                        lokets.length > 0 ? (
+                                            <>
+                                                <input
+                                                    name="loket_id"
+                                                    type="hidden"
+                                                    value={formLoket?.id ?? ''}
+                                                />
+                                                <Select
+                                                    value={
+                                                        formLoket?.id.toString() ??
+                                                        ''
+                                                    }
+                                                    onValueChange={(value) =>
+                                                        router.get(
+                                                            create.url({
+                                                                query: {
+                                                                    loket: value,
+                                                                },
+                                                            }),
+                                                        )
+                                                    }
+                                                >
+                                                    <SelectTrigger id="loket_id">
+                                                        <SelectValue placeholder="Pilih Loket untuk context testing" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {lokets.map(
+                                                            (option) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        option.id
+                                                                    }
+                                                                    value={option.id.toString()}
+                                                                >
+                                                                    {
+                                                                        option.name
+                                                                    }
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                <InputError
+                                                    message={errors.loket_id}
+                                                />
+                                                <p className="text-muted-foreground text-xs">
+                                                    Loket dipilih secara
+                                                    eksplisit untuk operasi
+                                                    Superadmin dan tidak
+                                                    disimpan pada akun.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="bg-muted rounded-xl px-3 py-2.5 text-sm font-medium">
+                                                    {formLoket?.name ??
+                                                        'Loket tidak tersedia'}
+                                                </div>
+                                                <p className="text-muted-foreground text-xs">
+                                                    Loket ditetapkan dari akun
+                                                    Petugas dan tidak dapat
+                                                    diubah dari form ini.
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="service_date">
@@ -242,7 +308,12 @@ export function BapForm({
                                     <Button variant="outline" asChild>
                                         <Link href={index()}>Batal</Link>
                                     </Button>
-                                    <Button disabled={processing}>
+                                    <Button
+                                        disabled={
+                                            processing ||
+                                            (mode === 'create' && !formLoket)
+                                        }
+                                    >
                                         {mode === 'create'
                                             ? 'Simpan draft BAP'
                                             : 'Simpan perubahan draft'}

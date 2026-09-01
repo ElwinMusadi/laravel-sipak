@@ -103,6 +103,8 @@ function bukuKendaliCancellation(array $context, int $numerator): BapCancellatio
  */
 function bukuKendaliRawAttributes(Bap|BapUsageSegment|BapCancellation $model, array $attributes): array
 {
+    $model->refresh();
+
     return collect($attributes)
         ->mapWithKeys(fn (string $attribute): array => [
             $attribute => $model->getRawOriginal($attribute),
@@ -334,5 +336,4 @@ test('roles other than Bendahara Barang cannot access Buku Kendali through direc
     'Petugas Loket' => UserRole::PetugasLoket,
     'Petugas Penetapan' => UserRole::PetugasPenetapan,
     'Petugas Verifikasi' => UserRole::PetugasVerifikasi,
-    'Superadmin' => UserRole::Superadmin,
 ]);

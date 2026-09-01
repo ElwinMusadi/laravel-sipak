@@ -19,7 +19,7 @@ class SubmitBap
 
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
 
-            if ($actor->loket_id !== $lockedBap->loket_id) {
+            if (! $actor->canOperateAtLoket($lockedBap->loket_id)) {
                 throw ValidationException::withMessages([
                     'loket_id' => 'BAP hanya dapat diajukan oleh Petugas Loket pemilik BAP.',
                 ]);

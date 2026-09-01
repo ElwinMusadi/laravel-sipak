@@ -129,6 +129,8 @@ function phaseElevenBendahara(): User
  */
 function phaseElevenRawAttributes(Bap|BapUsageSegment|SkpdAllocation|BapCancellation|BapClarificationRequest $model, array $attributes): array
 {
+    $model->refresh();
+
     return collect($attributes)
         ->mapWithKeys(fn (string $attribute): array => [$attribute => $model->getRawOriginal($attribute)])
         ->all();
@@ -377,5 +379,4 @@ test('roles other than Bendahara Barang cannot access or receive BAPs through di
     'Petugas Loket' => UserRole::PetugasLoket,
     'Petugas Penetapan' => UserRole::PetugasPenetapan,
     'Petugas Verifikasi' => UserRole::PetugasVerifikasi,
-    'Superadmin' => UserRole::Superadmin,
 ]);

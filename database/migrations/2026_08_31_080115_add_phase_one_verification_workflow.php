@@ -65,7 +65,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bap_verification_id')->constrained()->restrictOnDelete();
             $table->foreignId('bap_verification_checklist_item_id')
-                ->constrained()
+                ->constrained(indexName: 'bap_verification_discrepancies_checklist_item_foreign')
                 ->restrictOnDelete();
             $table->string('type', 32);
             $table->string('expected_value', 64);
@@ -74,7 +74,10 @@ return new class extends Migration
             $table->text('notes');
             $table->timestamps();
 
-            $table->unique('bap_verification_checklist_item_id');
+            $table->unique(
+                'bap_verification_checklist_item_id',
+                'bap_verification_discrepancies_checklist_item_unique',
+            );
             $table->index(['type', 'created_at']);
         });
 

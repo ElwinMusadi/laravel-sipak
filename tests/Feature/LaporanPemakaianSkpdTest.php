@@ -108,8 +108,10 @@ function laporanPemakaianCancellation(array $context, int $numerator): BapCancel
  * @param  list<string>  $attributes
  * @return array<string, mixed>
  */
-function laporanPemakaianRawAttributes(object $model, array $attributes): array
+function laporanPemakaianRawAttributes(Bap|BapUsageSegment|BapCancellation|BapVerification|BapClarificationRequest $model, array $attributes): array
 {
+    $model->refresh();
+
     return collect($attributes)
         ->mapWithKeys(fn (string $attribute): array => [
             $attribute => $model->getRawOriginal($attribute),
@@ -344,5 +346,4 @@ test('Laporan Pemakaian forbids unauthorized roles through direct HTTP requests'
     'Petugas Loket' => UserRole::PetugasLoket,
     'Petugas Penetapan' => UserRole::PetugasPenetapan,
     'Petugas Verifikasi' => UserRole::PetugasVerifikasi,
-    'Superadmin' => UserRole::Superadmin,
 ]);

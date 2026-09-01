@@ -12,7 +12,6 @@ use App\Models\Bap;
 use App\Models\BapClarificationRequest;
 use App\Models\BapVerification;
 use App\Models\User;
-use App\UserRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +24,7 @@ class ReceiveBapByBendaharaBarang
         return DB::transaction(function () use ($actor, $bap, $receiptNotes): Bap {
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
 
-            if ($actor->role !== UserRole::BendaharaBarang) {
+            if (! $actor->canReceiveBapAdministratively()) {
                 throw ValidationException::withMessages([
                     'bap' => 'Hanya Bendahara Barang yang dapat menerima BAP secara administratif.',
                 ]);

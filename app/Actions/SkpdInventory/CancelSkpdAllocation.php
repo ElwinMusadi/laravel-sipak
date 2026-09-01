@@ -27,7 +27,7 @@ class CancelSkpdAllocation
                 ]);
             }
 
-            if ($lockedAllocation->created_by !== $actor->id) {
+            if (! $actor->canManageSkpdAllocation($lockedAllocation)) {
                 throw ValidationException::withMessages([
                     'allocation' => 'Hanya pembuat alokasi yang dapat membatalkan handover pending.',
                 ]);

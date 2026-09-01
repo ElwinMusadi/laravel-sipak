@@ -4,7 +4,8 @@ import Heading from '@/components/heading';
 import { create, index } from '@/routes/baps';
 
 type Props = {
-    loket: { id: number; name: string };
+    loket: { id: number; name: string } | null;
+    lokets: { id: number; name: string }[];
     default_service_date: string;
     expected_numerator_start: number | null;
     allocations: {
@@ -17,6 +18,7 @@ type Props = {
 
 export default function CreateBap({
     loket,
+    lokets,
     default_service_date,
     expected_numerator_start,
     allocations,
@@ -34,6 +36,7 @@ export default function CreateBap({
                 <BapForm
                     mode="create"
                     loket={loket}
+                    lokets={lokets}
                     defaultServiceDate={default_service_date}
                     expectedNumeratorStart={expected_numerator_start}
                     allocations={allocations}

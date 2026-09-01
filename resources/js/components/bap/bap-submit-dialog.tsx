@@ -67,7 +67,7 @@ export function BapSubmitDialog({ bap }: Props) {
                     <DialogClose asChild>
                         <Button variant="outline">Kembali</Button>
                     </DialogClose>
-                    <Form {...SkpdBapController.submit.form(bap.id)}>
+                    <Form action={SkpdBapController.submit(bap.id)}>
                         {({ processing }) => (
                             <Button disabled={processing}>
                                 Konfirmasi ajukan

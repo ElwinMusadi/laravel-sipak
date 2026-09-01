@@ -32,7 +32,7 @@ class ReviewBapClarification
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($lockedClarification->bap_id);
             $stage = $lockedClarification->verification->stage;
 
-            if ($actor->role !== $stage->verifierRole()) {
+            if (! $actor->canVerifyStage($stage)) {
                 throw ValidationException::withMessages([
                     'clarification' => "Hanya {$stage->verifierRole()->label()} yang dapat meninjau klarifikasi {$stage->label()}.",
                 ]);
