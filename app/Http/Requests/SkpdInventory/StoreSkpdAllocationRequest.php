@@ -45,6 +45,12 @@ class StoreSkpdAllocationRequest extends FormRequest
                     return;
                 }
 
+                if ((int) $this->input('numerator_start') < 1) {
+                    $validator->errors()->add('numerator_start', 'Nomeratur awal minimal 0000001.');
+
+                    return;
+                }
+
                 if ((int) $this->input('numerator_end') <= (int) $this->input('numerator_start')) {
                     $validator->errors()->add('numerator_end', 'Nomeratur akhir harus lebih besar dari nomeratur awal.');
                 }

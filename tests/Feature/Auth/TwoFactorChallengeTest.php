@@ -1,35 +1,6 @@
 <?php
 
-use App\Models\User;
-use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Fortify\Features;
-
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-});
-
-test('two factor challenge redirects to login when not authenticated', function () {
-    $response = $this->get(route('two-factor.login'));
-
-    $response->assertRedirect(route('login'));
-});
-
-test('two factor challenge can be rendered', function () {
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-
-    $user = User::factory()->withTwoFactor()->create();
-
-    $this->post(route('login'), [
-        'username' => $user->username,
-        'password' => 'password',
-    ]);
-
-    $this->get(route('two-factor.login'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('auth/two-factor-challenge'),
-        );
+test('two factor endpoints return 404 when the feature is disabled', function () {
+    $this->get('/two-factor-challenge')->assertNotFound();
+    $this->post('/user/two-factor-authentication')->assertNotFound();
 });

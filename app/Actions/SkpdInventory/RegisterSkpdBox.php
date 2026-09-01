@@ -105,9 +105,9 @@ class RegisterSkpdBox
 
     private function validateRange(int $numeratorStart, int $numeratorEnd): void
     {
-        if ($numeratorStart < 0 || $numeratorEnd > 9_999_999 || $numeratorEnd < $numeratorStart) {
+        if ($numeratorStart < 1 || $numeratorEnd > 9_999_999 || $numeratorEnd < $numeratorStart) {
             throw ValidationException::withMessages([
-                'numerator_end' => 'Range nomeratur harus berada pada 0000000–9999999 dan berurutan.',
+                'numerator_start' => 'Range nomeratur harus berada pada 0000001–9999999 dan berurutan.',
             ]);
         }
     }

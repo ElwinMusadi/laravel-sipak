@@ -1,323 +1,194 @@
 # SIPAK — STATUS PROYEK
 
 **Pembaruan terakhir:** 1 September 2026
-**Fase saat ini:** PHASE 14 — OUTPUT DOKUMEN, PDF, EXCEL & PRINT
-**Status fase:** Selesai di SQLite lokal. Output laporan adalah proyeksi read-only dari BAP selesai administratif dan tidak diklaim sebagai dokumen administrasi resmi.
+**Fase saat ini:** PHASE 15 — FINAL AUDIT, SECURITY HARDENING, REGRESSION & RELEASE READINESS
+**Status akhir:** **READY WITH CONDITIONS** untuk codebase lokal; **belum boleh diperlakukan sebagai deployment production**.
 
-## Fase Saat Ini
+## Ringkasan Eksekutif
 
-PHASE 14 — OUTPUT DOKUMEN, PDF, EXCEL & PRINT.
+Phase 15 mengaudit implementasi aktual SIPAK terhadap AI PRODUCT BLUEPRINT SIPAK, status Phase 14, source code, rute, skema, test, konfigurasi, dan quality gate. Tidak ditemukan P0. Tiga P1 deterministik sudah diperbaiki: 2FA yang tidak dikehendaki, SSR parsial, dan batas numerator `0000000`.
 
-## Status Fase
+Codebase lulus seluruh test PHP, PHPStan, Pint, build Vite, validasi Composer, audit dependensi, serta type-check TypeScript yang dijalankan serial setelah Wayfinder selesai digenerasi. Release masih bersyarat karena CI gagal pada formatting issue di luar scope, environment lokal masih development, MySQL target belum diuji, serta validasi browser/a11y belum tersedia.
 
-PDF, XLSX, dan print browser tersedia untuk **Laporan Pemakaian SKPD**. Ketiganya memakai filter bulan, tahun, dan Loket yang sama, serta sumber BAP `completed` yang sama dengan halaman web Phase 13.
+## Ruang Lingkup dan Metodologi Audit
 
-## Ringkasan
+Audit mencakup Blueprint, status fase terdahulu, riwayat commit Phase 08–14, migrations, enum, model, request, Gate, action, controller, rute, Wayfinder, halaman React, komponen shadcn/Radix, test, dependensi, konfigurasi, workflow CI, dan database SQLite lokal.
 
-- Output PDF dan Excel dihasilkan saat diminta; tidak ada tabel report, snapshot, atau penyimpanan file baru.
-- PDF diberi label **Laporan Sistem**, bukan format dokumen administrasi resmi.
-- Excel memiliki sheet **Ringkasan**, **Rekap Loket**, dan **Detail BAP**.
-- Print memakai `window.print()` pada halaman laporan yang sudah terproteksi.
-- Tidak ada mutasi BAP, usage segment, cancellation, verifikasi, klarifikasi, penerimaan, Box, atau Allocation.
+Validasi dilakukan dengan inspeksi source dan schema, `route:list`, `migrate:status`, `db:show`, `EXPLAIN QUERY PLAN`, full test suite, build, formatter, static analysis, dependency audit, serta pemeriksaan konfigurasi tanpa menampilkan rahasia. Tidak ada klaim browser, screen reader, MySQL, atau deployment yang tidak benar-benar dijalankan.
 
-## Laporan Pemakaian SKPD
+## Baseline Implementasi Aktual
 
-Halaman **Laporan Pemakaian SKPD** tetap read-only dan menampilkan periode, ringkasan, rekap per Loket, serta detail BAP terpaginasikan. Header halaman sekarang menyediakan tombol **PDF**, **Excel**, dan **Cetak**.
+- Laravel 13.29.0, PHP 8.3.23, Inertia Laravel 3.3.1, React/Inertia 3.7.0, Wayfinder 0.1.21, Fortify 1.39.0, Pest 4.7.8, Tailwind 4.3.3, dan Vite 8.2.2.
+- Database lokal adalah SQLite 3.40.0 dengan 24 tabel; migrasi 18/18 berstatus `Ran`.
+- Riwayat implementasi terakhir adalah Phase 08–14: verifikasi dua tahap, klarifikasi/re-verifikasi immutable, penerimaan Bendahara Barang, Buku Kendali, Laporan Pemakaian, PDF, XLSX, dan print.
+- Konfigurasi lokal aktif adalah `APP_ENV=local`, `APP_DEBUG=true`, SQLite, queue/cache/session database, dan mailer `log`.
 
-## Sumber Data
+## Status Kebutuhan Blueprint
 
-Sumber tunggal laporan dan seluruh output adalah BAP berstatus `completed`. Nilai yang digunakan:
+| Area Blueprint                                  | Status implementasi aktual       | Catatan                                                                                  |
+| ----------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| Username-only login, user aktif, RBAC           | Sesuai                           | Login dibatasi username, inactive user ditolak, rute dan Gate diuji.                     |
+| Box, Allocation, ledger-derived inventory       | Sesuai                           | Mutasi memakai transaksi, lock inventaris, range/overlap/sekuens diuji.                  |
+| BAP draft, submit, usage segment, batal/rusak   | Sesuai                           | Sumber data immutable setelah submit; cancellation tidak mengurangi ledger pemakaian.    |
+| Verifikasi Tahap 1 dan Tahap 2                  | Sesuai implementasi              | Pelaksana aktual adalah Petugas Penetapan lalu Petugas Verifikasi.                       |
+| Klarifikasi dan re-verifikasi                   | Sesuai                           | History attempt, respons, resolusi, dan reopen dipertahankan.                            |
+| Penerimaan Bendahara Barang                     | Sesuai implementasi              | `verified_phase_2` menjadi prasyarat sebelum `completed`.                                |
+| Buku Kendali, laporan, PDF/XLSX/print           | Sesuai implementasi              | Seluruhnya read-only dari BAP `completed`.                                               |
+| Persetujuan Kasie dan bulk sign-off Kepala UPTD | Belum ada                        | Enum peran ada, tetapi workflow approval/bulk sign-off belum diimplementasikan.          |
+| Master alasan batal/rusak                       | Belum ada                        | Alasan masih enum `Batal`/`Rusak`, bukan master data.                                    |
+| Audit log                                       | Sebagian                         | Audit domain tersedia dan dipakai action, tetapi belum ada modul UI/report audit khusus. |
+| Notifikasi operasional                          | Belum diverifikasi sebagai fitur | Tidak diklaim tersedia.                                                                  |
 
-- `service_date`;
-- Loket;
-- `numerator_start` dan `numerator_end`;
-- `total_usage`;
-- `online_usage_count`; dan
-- jumlah `BapCancellation`.
+Perbedaan Blueprint yang belum diwujudkan tidak ditambal otomatis karena memerlukan keputusan proses bisnis dan otoritas operasional.
 
-`BapUsageSegment` tetap merupakan ledger range sumber nilai BAP. Status `completed` adalah bukti finalitas penerimaan administratif yang dipakai untuk eligibility. Output tidak menghitung ulang range, tidak mengubah receipt, dan tidak membuat data turunan yang dapat dimutasi.
+## Role dan Manajemen Pengguna
 
-## Data Eligibility
+`UserRole` memuat Superadmin, Petugas Loket, Petugas Penetapan, Kasie Penetapan, Petugas Verifikasi, Kasie Verifikasi, Bendahara Barang, dan Kepala UPTD. Manajemen user hanya dapat diakses Superadmin; penugasan Loket, aktivasi/nonaktif, reset password, audit, dan pembatasan akses sesudah akun dinonaktifkan tercakup feature test.
 
-Hanya BAP `completed` yang masuk. Draft, submitted, seluruh status verifikasi/klarifikasi, dan `verified_phase_2` tidak masuk.
+Server tetap menjadi sumber otorisasi. Visibility `auth.permissions` hanya presentasi dan tidak menggantikan Gate, middleware, atau `FormRequest::authorize()`.
 
-## Periode
+## Authentication dan Security Hardening
 
-Periode memakai `service_date`. Bulan dan tahun diubah menjadi hari pertama sampai hari terakhir bulan secara inklusif dengan `whereDate`. Default tetap bulan berjalan pada timezone aplikasi.
+### Perbaikan P1 yang diterapkan
 
-## Filter
+- Fortify 2FA dinonaktifkan dengan `features => []`; limiter dan view 2FA dihapus.
+- Halaman, komponen, hook, request, serta rute Wayfinder 2FA yang tidak lagi dipakai dihapus.
+- Endpoint `GET /two-factor-challenge` dan `POST /user/two-factor-authentication` sekarang diuji menghasilkan `404`.
+- Passkey tetap paket/migrasi dormant tanpa rute atau integrasi aplikasi aktif. Dependensi tidak dihapus karena perubahan dependensi tidak termasuk mandat fase ini.
+- `inertia.ssr.enabled` diubah menjadi `false`. Bundle `bootstrap/ssr/ssr.mjs` dan proses SSR tidak tersedia, sehingga konfigurasi sebelumnya merupakan SSR parsial yang berisiko menimbulkan asumsi deployment keliru.
 
-Filter server-side tersedia untuk bulan, tahun, dan Loket opsional. Halaman web, PDF, dan XLSX menerima kontrak filter yang sama. Pagination halaman web mempertahankan filter; PDF dan XLSX selalu memuat seluruh BAP yang eligible dalam filter, bukan hanya halaman pagination aktif.
+### Hasil audit autentikasi
 
-## Summary
+- Registrasi publik, reset password berbasis email, dan verifikasi email tidak tersedia.
+- Login memakai username case-normalized, password hash, rate limit lima percobaan, dan akun aktif.
+- Password update tetap dilindungi password confirmation.
+- Tidak ada rute 2FA atau passkey yang terdaftar setelah hardening.
+- Environment lokal tidak boleh dipakai sebagai environment production karena `APP_DEBUG=true`. Nilai production wajib disediakan melalui environment deployment, bukan dengan mengubah `.env` lokal pengembangan.
 
-Ringkasan dari scope BAP yang sama menampilkan:
+## Workflow BAP, Verifikasi, Klarifikasi, dan Finalisasi
 
-- Total BAP;
-- SKPD Terpakai;
-- Online; dan
-- Batal/Rusak.
+Alur aktual adalah `draft → submitted → verifikasi tahap 1 → verifikasi tahap 2 → verified_phase_2 → completed`, dengan cabang klarifikasi dan attempt re-verifikasi baru. `completed` hanya dapat dibuat oleh penerimaan administratif Bendahara Barang setelah kedua verification record lulus dan tidak ada klarifikasi aktif.
 
-## Total Pemakaian
+Action memuat transaksi dengan `attempts: 3`, `lockForUpdate()`, revalidasi state di dalam transaksi, dan audit domain. BAP submitted, usage segment, cancellation, checklist/discrepancy, klarifikasi, serta receipt tidak dimutasi diam-diam pada tahap verifikasi atau klarifikasi.
 
-Total pemakaian adalah `sum(baps.total_usage)`. Nilai tersebut sudah dibentuk oleh domain BAP dari range/usage segment, sehingga reporting tidak membangun atau memodifikasi ledger baru. Batal/rusak tidak dikurangkan dari total pemakaian.
+### Temuan P2: detail verifikasi di luar antrean
 
-## Online
+`showForStage()` hanya memeriksa Gate role tahap. Berbeda dari halaman indeks yang memfilter `queueBapStatuses()`, endpoint detail belum secara eksplisit menolak BAP yang berada di luar antrean tahap. Mutasi tetap aman karena action start/complete melakukan revalidasi state, tetapi role verifier dapat membaca detail BAP di luar antrean bila mengetahui ID.
 
-Online adalah `sum(baps.online_usage_count)` dari BAP completed dan tetap bagian dari total SKPD terpakai. Tidak ada inferensi atau field online baru.
+Keputusan yang dibutuhkan: apakah riwayat lintas-status memang boleh dibaca seluruh verifier. Jika tidak, tambahkan scope stage/status di endpoint detail dan test `404`/`403` untuk BAP di luar antrean. Tidak diperbaiki otomatis karena aturan akses riwayat belum diputuskan oleh Blueprint.
 
-## Batal/Rusak
+## Inventory, Nomeratur, dan Integritas Data
 
-Batal/rusak adalah `count(bap_cancellations)` untuk BAP dalam scope laporan. Nilai dihitung terpisah dari aggregate BAP agar satu BAP dengan beberapa cancellation tidak melipatgandakan total BAP, terpakai, atau online.
+Box, Allocation, BAP, usage segment, dan cancellation tetap ledger-derived. Lock inventaris ID 1, validasi overlap/sekuens, serta transaksi menjaga mutasi concurrency pada jalur aplikasi. Laporan tidak menciptakan stok mutable atau duplicate ledger.
 
-## Rekap Per Loket
+### Perbaikan P1 batas numerator
 
-Rekap per Loket menampilkan BAP, terpakai, online, dan batal/rusak. Desktop memakai tabel dengan total; mobile memakai kartu ringkas. Tombol **Detail BAP** menerapkan filter Loket pada laporan yang sama.
+Sebelumnya request dan action menerima `0000000`. Semua jalur tulis kini menetapkan minimum `0000001`:
 
-Rekap ini adalah tampilan operasional sistem, bukan format administrasi resmi.
+- registrasi Box;
+- alokasi Box ke Loket;
+- pembuatan BAP; dan
+- pembaruan draft BAP.
 
-## Rekap Harian
+Validasi HTTP memberi pesan `Nomeratur awal minimal 0000001.` dan action tetap menegakkan aturan bila dipanggil di luar controller. Test endpoint dan test domain action mencakup batas nol. Tampilan tujuh digit tetap dipertahankan.
 
-Belum dibuat. Blueprint tidak menetapkan grouping dan format harian.
+### Catatan P2
 
-## Rekap Nomeratur
+Request Box dan Allocation masih mengharuskan `numerator_end > numerator_start`, sehingga range satu set tidak dapat dibuat melalui HTTP walaupun action/domain dapat memahami range inklusif. Kebutuhan bisnis “satu set” belum cukup eksplisit untuk mengubah kontrak ini otomatis.
 
-Belum dibuat sebagai grouping terpisah. Detail BAP tetap menampilkan range sumber dengan formatter tujuh digit, misalnya `0582608–0582617`.
+## Laporan, Buku Kendali, dan Output
 
-## Aggregation
+Buku Kendali dan Laporan Pemakaian memakai BAP `completed` sebagai scope read-only. Aggregate menghindari double count dengan tidak menggabungkan BAP langsung ke usage segment/cancellation. PDF, XLSX, dan print tidak membuat snapshot, tabel laporan, atau mutasi sumber. Nomeratur Excel diformat tujuh digit.
 
-`SkpdLaporanPemakaianQuery` menjadi query layer bersama untuk halaman web, PDF, dan XLSX:
+Audit SQLite membuktikan query laporan berdasarkan status dan tanggal memakai `baps_status_service_date_index`. Database lokal tidak memiliki data BAP nyata, sehingga hasil ini membuktikan rencana query, bukan throughput produksi.
 
-- scope BAP `completed`, periode, dan Loket ditentukan sekali;
-- `count`, `sum(total_usage)`, dan `sum(online_usage_count)` dijalankan database-side;
-- cancellation memakai subquery ID BAP yang sama; dan
-- rekap Loket mengelompokkan BAP dan cancellation secara terpisah.
+## Route, Action, dan Wayfinder
 
-Tidak ada pemuatan seluruh BAP ke PHP untuk menghitung aggregate.
+Rute mutasi inventory/BAP/verification menggunakan auth, active-user enforcement, Gate atau `FormRequest::authorize()`, dan action domain. Test mencakup denial role, cross-Loket, state invalid, duplicate completion, serta client-supplied field yang dilarang.
 
-## Double Count Protection
+Wayfinder digenerasi ulang setelah perubahan konfigurasi Fortify. Tidak ada lagi direktori atau ekspor `resources/js/routes/two-factor`; build menghasilkan kembali varian `.form()` yang diperlukan halaman Inertia.
 
-Aggregate tidak melakukan join langsung BAP ke usage segment dan cancellation. Satu BAP dengan beberapa usage segment atau cancellation tetap dihitung sekali untuk BAP, total pemakaian, dan online; cancellation dihitung sesuai jumlah record sebenarnya.
+## Database, Migration, dan Audit Trail
 
-## Traceability
+Migrasi lokal seluruhnya selesai. Schema memuat constraint/index untuk kebutuhan yang diuji, termasuk indeks BAP `status, service_date`, uniqueness cancellation, serta uniqueness BAP per Loket/tanggal. Database target MySQL tidak tersedia pada audit ini; kompatibilitas DDL MySQL, check constraint, dan locking production belum dapat diklaim.
 
-Detail BAP pada web, PDF, dan XLSX memuat tanggal pelayanan, nomor BAP, Loket, range nomeratur, terpakai, online, dan batal/rusak. XLSX menyimpan nomeratur awal/akhir sebagai teks dengan format `%07d` agar leading zero tidak hilang.
+`AuditLog` bersifat polymorphic dengan actor, event, old values, dan new values. Action inventory, BAP, verification, klarifikasi, serta penerimaan administratif mencatat event domain. Tidak ada pembuktian UI audit, retensi, backup, observability, atau prosedur pemulihan production.
 
-## Drill-down
+## UI/UX dan Aksesibilitas
 
-Detail web tetap menggunakan halaman BAP existing melalui Wayfinder. Output tidak menambah endpoint detail BAP baru.
+Build TypeScript/Vite lulus. Komponen aktif menggunakan shadcn/Radix dan tidak ada rute 2FA tersisa. Masih terdapat token warna Tailwind hard-coded pada beberapa komponen/auth badge; ini technical debt P3 untuk konsistensi tema, bukan bukti kegagalan fungsi.
 
-## Authorization
+Browser Pest dan browser automation tidak tersedia dalam environment audit. Karena itu responsif desktop/mobile, dark mode aktual, keyboard navigation, screen reader, print preview fisik, dan accessibility scan berstatus **BELUM DIVERIFIKASI**, bukan PASS.
 
-Gate `view-laporan-pemakaian` dan middleware route melindungi halaman serta endpoint PDF/XLSX secara langsung. Akses tetap diberikan hanya kepada Bendahara Barang dan Kepala UPTD. Petugas Loket, Petugas Penetapan, Petugas Verifikasi, dan Superadmin ditolak.
+## Quality Gate dan Release Verification
 
-Tombol presentasi tidak menjadi sumber otorisasi; endpoint mengulang Gate pada server.
+| Pemeriksaan                                    | Hasil                       | Bukti / catatan                                                                       |
+| ---------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| `php artisan test --compact`                   | PASS                        | 162 test, 1.274 assertion.                                                            |
+| Test terdampak hardening                       | PASS                        | 41 test, 216 assertion.                                                               |
+| `vendor/bin/phpstan analyse`                   | PASS                        | 0 error.                                                                              |
+| `vendor/bin/pint --test`                       | PASS                        | Tidak ada pelanggaran PHP style.                                                      |
+| `composer validate --strict`                   | PASS                        | `composer.json` valid.                                                                |
+| `composer audit --format=json`                 | PASS                        | 0 advisory, 0 abandoned package.                                                      |
+| `npm audit --omit=dev --json`                  | PASS                        | 0 vulnerability production dependency.                                                |
+| `npm run types:check` serial setelah build     | PASS                        | TypeScript tanpa error.                                                               |
+| `npm run build`                                | PASS                        | Vite dan generation Wayfinder berhasil.                                               |
+| `git diff --check`                             | PASS                        | Tidak ada whitespace error.                                                           |
+| `php artisan config:cache` lalu `config:clear` | PASS                        | Konfigurasi dapat dicache dan dipulihkan.                                             |
+| `npm run check`                                | FAIL                        | Formatting issue pada 11 source file di luar scope setelah status file ini diformat.  |
+| `composer ci:check`                            | FAIL                        | Berhenti pada `npm run check`; workflow CI memang memanggil script ini.               |
+| SSR server health check                        | TIDAK BERLAKU / tidak jalan | Server SSR tidak berjalan, dan konfigurasi aplikasi sekarang secara sengaja disabled. |
+| MySQL migration/query/locking                  | BELUM DIVERIFIKASI          | Hanya SQLite lokal yang diuji.                                                        |
+| Browser/a11y                                   | BELUM DIVERIFIKASI          | Tidak ada Browser Pest/browser automation.                                            |
 
-## Scope Loket
+Catatan: type-check yang dijalankan paralel dengan build sempat membaca keluaran Wayfinder antargenerasi tanpa `.form()`. Pemeriksaan serial setelah build lulus; hasil paralel tersebut bukan defect source.
 
-Bendahara Barang dan Kepala UPTD melihat seluruh Loket. Tidak ada Petugas Loket yang diberi akses laporan pada implementasi aktual. Jika akses scoped Loket diperlukan kemudian, Gate dan query wajib diberi scope `loket_id` server-side beserta test isolasi lintas-Loket.
+## Temuan Audit dan Prioritas
 
-## Performance
+| ID    | Prioritas            | Status            | Temuan dan tindak lanjut                                                                                                                                                                                                                                            |
+| ----- | -------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1-01 | P1                   | Fixed             | 2FA Fortify aktif padahal tidak digunakan. Dinonaktifkan, route/UI/support code dihapus, dan 404 diuji.                                                                                                                                                             |
+| P1-02 | P1                   | Fixed             | SSR enabled tanpa bundle/proses SSR. Diubah menjadi disabled dan dikunci test konfigurasi.                                                                                                                                                                          |
+| P1-03 | P1                   | Fixed             | `0000000` diterima sebagai numerator. Minimum `0000001` ditegakkan pada request dan action.                                                                                                                                                                         |
+| P1-04 | P1 release condition | Open              | Environment lokal memakai `APP_ENV=local` dan `APP_DEBUG=true`; jangan deploy konfigurasi ini. Provisioning production wajib menetapkan `APP_ENV=production`, `APP_DEBUG=false`, key/secret, mail, queue, cache, session, log, HTTPS, dan trusted proxy yang tepat. |
+| P2-01 | P2                   | Open              | CI gagal karena 11 formatting issue existing di luar scope. Jalankan formatter terarah/review pada file tersebut sebelum merge/release.                                                                                                                             |
+| P2-02 | P2                   | Open              | MySQL target belum menjalankan migration, test, EXPLAIN, atau uji transaction locking.                                                                                                                                                                              |
+| P2-03 | P2                   | Open decision     | Endpoint detail verifikasi belum menegakkan queue status seperti halaman indeks. Putuskan kebijakan akses history lalu tambah scope/test bila perlu.                                                                                                                |
+| P2-04 | P2                   | Open decision     | Range Box/Allocation satu set ditolak HTTP karena end harus lebih besar dari start.                                                                                                                                                                                 |
+| P2-05 | P2                   | Open business gap | Approval Kasie, bulk sign-off Kepala UPTD, master alasan batal/rusak, dan UI audit belum memiliki kontrak bisnis yang dapat diimplementasikan aman.                                                                                                                 |
+| P3-01 | P3                   | Open              | Hard-coded color utilities tersisa pada beberapa komponen; konsolidasikan dengan token tema ketika ada fase UI.                                                                                                                                                     |
+| P3-02 | P3                   | Open              | Node lokal 22.17.0 berada di bawah engine Vite Plus `^22.18.0`; build lulus, tetapi upgrade Node diperlukan untuk baseline developer yang deterministik.                                                                                                            |
 
-- Filter memakai index BAP existing `status, service_date`.
-- Cancellation memakai index `bap_id` existing.
-- Query detail memakai eager load Loket dan `withCount('cancellations')`; XLSX memakai `FromQuery` untuk menulis detail secara chunked.
-- Aggregate dan grouping tetap berjalan di database.
-- Tidak ada migration atau index baru.
+Tidak ada P0 ditemukan.
 
-Query plan dan efektivitas index pada MySQL target belum diuji.
+## Perubahan yang Diterapkan pada Phase 15
 
-## Buku Kendali Consistency
+- Menonaktifkan dan menghapus permukaan 2FA aktif tanpa menghapus migrasi/data historis atau dependency secara spekulatif.
+- Menonaktifkan SSR yang belum benar-benar dideploy.
+- Memperketat batas numerator menjadi `0000001–9999999` pada empat request dan empat action domain.
+- Menambah regression test hardening 2FA, SSR disabled, HTTP boundary numerator, dan action boundary numerator.
+- Meregenerasi Wayfinder dan memverifikasi tidak ada rute 2FA tersisa.
 
-Laporan, PDF, dan XLSX memakai scope BAP completed yang sama dengan Buku Kendali. Feature test laporan mempertahankan dataset pembuktian BAP 2, pemakaian 30, online 8, dan batal/rusak 3 tanpa double count.
+## Technical Debt dan Keputusan yang Dibutuhkan
 
-## PDF
+1. Putuskan apakah Kasie approval dan bulk sign-off Kepala UPTD wajib sebelum mengubah workflow yang sudah stabil.
+2. Putuskan apakah verifier boleh melihat detail BAP di luar antrean masing-masing.
+3. Putuskan apakah range satu set valid untuk Box dan Allocation.
+4. Tetapkan timezone operasional. Konfigurasi aplikasi masih UTC; jangan mengubahnya tanpa keputusan cut-off periode dan migrasi dampak data.
+5. Jika audit export, dokumen resmi, snapshot inventory, atau notifikasi diperlukan, tetapkan actor, event, retention, format, approval, dan otoritas bisnis terlebih dahulu.
 
-`GET /laporan/pemakaian/pdf` menghasilkan unduhan PDF A4 landscape bernama `laporan-pemakaian-skpd-{bulan}-{tahun}.pdf`.
+## Checklist Deployment Wajib
 
-- Menggunakan `barryvdh/laravel-dompdf` 3.1.2 dan view Blade `pdf.laporan-pemakaian`.
-- Memakai lambang Pemprov NTT existing dari `public/images/logo-pemprov-ntt.png` tanpa membuat ulang aset.
-- Header memuat SIPAK-SKPD, **Sistem Informasi Pemakaian Bukti SKPD**, dan **UPTD Pendapatan Daerah Wilayah Kota Kupang**.
-- Memuat periode, Loket bila dipilih, waktu pembuatan, ringkasan, rekap Loket, dan detail BAP.
-- Footer menyatakan bahwa hasil adalah laporan sistem dari data BAP final dan bukan format dokumen administrasi resmi.
+- [ ] Sediakan environment production terpisah dengan `APP_DEBUG=false`, `APP_ENV=production`, `APP_KEY` baru/terkelola, HTTPS, `APP_URL`, mail, queue, cache, session, logging, dan secret yang benar.
+- [ ] Uji backup, restore, rotasi log, monitoring, alert, dan kebijakan retensi di lingkungan production-like.
+- [ ] Provision MySQL target; jalankan migration pada salinan aman, full test, EXPLAIN query laporan, serta uji locking/concurrency inventory dan verification.
+- [ ] Selesaikan formatting issue agar `npm run check` dan `composer ci:check` lulus.
+- [ ] Upgrade Node lokal ke minimal 22.18.0 atau gunakan environment terkelola yang memenuhi engine Vite Plus.
+- [ ] Jalankan validasi browser manual/otomatis: desktop/mobile, light/dark, keyboard, focus/error state, a11y, dan print preview.
+- [ ] Tinjau P2-03 dan P2-04 bersama pemilik proses bisnis.
 
-## Excel
+## Rekomendasi dan Status Readiness
 
-`GET /laporan/pemakaian/excel` menghasilkan unduhan XLSX bernama `laporan-pemakaian-skpd-{bulan}-{tahun}.xlsx`.
+**READY WITH CONDITIONS.** Tidak ada P0, dan P1 pada codebase telah diperbaiki. Namun status ini hanya menyatakan codebase lokal telah melewati regression/security gate yang tersedia. Ia bukan persetujuan deploy production.
 
-- Menggunakan `maatwebsite/excel` 4.0.2.
-- **Ringkasan** memuat periode/Loket dan empat nilai total.
-- **Rekap Loket** memuat tabel Loket, Total BAP, Terpakai, Online, dan Batal/Rusak dengan filter dan freeze pane.
-- **Detail BAP** memuat BAP sumber dengan heading, filter, freeze pane, dan auto-filter.
-- `WithStrictNullComparison` memastikan nilai nol benar-benar keluar sebagai `0`, bukan sel kosong.
-- Kolom nomeratur awal/akhir diformat sebagai teks Excel untuk menjaga tujuh digit.
-
-## Print
-
-Tombol **Cetak** memanggil `window.print()` pada halaman laporan yang sedang difilter. CSS `@media print`:
-
-- menyembunyikan sidebar, header aplikasi, filter, tombol aksi, kartu mobile, dan pagination;
-- menampilkan tabel desktop responsif sebagai tabel print;
-- menyembunyikan kolom aksi; dan
-- memakai A4 landscape, header tabel berulang, serta mencegah pemisahan baris tabel.
-
-Print adalah keluaran halaman web saat ini. Detail BAP yang tercetak mengikuti halaman pagination yang sedang dibuka; gunakan PDF atau XLSX untuk seluruh detail filter.
-
-## Status Dokumen
-
-Tidak ada format resmi, nomor register, tanda tangan, QR, barcode, layout kertas, atau approval dokumen yang disahkan oleh Blueprint. Karena itu semua keluaran diberi status **Laporan Sistem**, bukan dokumen administrasi resmi.
-
-## Export Audit
-
-Tidak ada audit trail khusus setiap kali PDF/XLSX dihasilkan. Sistem audit existing melekat pada record domain yang diaudit, sedangkan Blueprint belum menetapkan kebutuhan actor, waktu, hash file, retensi, atau register keluaran. Keputusan tersebut diperlukan sebelum audit export dibuat.
-
-## BAP Document Output
-
-Tidak dibuat PDF/print BAP individual. Blueprint menyebut print/export pada detail BAP, tetapi implementasi aktual belum memiliki Slide-over detail BAP maupun format BAP resmi yang dapat direplikasi tanpa mengarang aturan dokumen.
-
-## Inventory Report
-
-Tidak dibuat laporan persediaan bulanan atau historical month-end. Inventory saat ini derived dari ledger/range aktif dan tidak memiliki kebijakan closing/snapshot yang cukup untuk merekonstruksi saldo historis secara sah.
-
-## UI/UX
-
-Halaman mempertahankan primitive shadcn/ui dan token tema Amber existing.
-
-- Tombol PDF, Excel, dan Cetak berada di header laporan dan responsif.
-- Filter tetap tidak tercetak.
-- Tabel desktop dipakai untuk print; kartu mobile dan tindakan navigasi disembunyikan.
-- Tidak ada hard-coded URL frontend; PDF dan XLSX memakai helper Wayfinder yang digenerate.
-
-Build membuktikan halaman dapat dikompilasi. Review browser interaktif desktop/mobile serta Light/Dark belum tervalidasi karena Browser Pest tidak tersedia.
-
-## Navigation
-
-Item sidebar **Laporan → Pemakaian** tidak berubah dan tetap menggunakan permission server-derived `viewLaporanPemakaian`. Tidak ada menu laporan baru.
-
-## Dashboard
-
-Tidak ada dashboard, shortcut, atau metric baru.
-
-## Route
-
-- `GET /laporan/pemakaian` — `laporan-pemakaian.index`
-- `GET /laporan/pemakaian/pdf` — `laporan-pemakaian.pdf`
-- `GET /laporan/pemakaian/excel` — `laporan-pemakaian.excel`
-
-Ketiganya berada dalam middleware `auth`, `active`, dan `can:view-laporan-pemakaian`. Wayfinder digenerate ulang setelah route ditambahkan.
-
-## Query / Service Layer
-
-`SkpdLaporanPemakaianController` menangani HTTP, validasi filter, authorization, dan generation output. `SkpdLaporanPemakaianQuery` menangani query read-only bersama. Tidak ada Action domain baru karena output tidak melakukan mutation.
-
-## Database
-
-Tidak ada migration, tabel `monthly_reports`, `report_entries`, `report_snapshots`, duplicate ledger, atau file storage baru. Schema BAP, usage segment, cancellation, Loket, dan receipt existing digunakan langsung.
-
-## Inventory Impact
-
-Tidak ada dampak inventaris. PDF, XLSX, dan print tidak mengubah Box, Allocation, status Allocation, usage segment, range nomeratur, atau stok derived.
-
-## Source Immutability
-
-Feature test membuktikan request PDF dan XLSX tidak mengubah raw attribute BAP, usage segment, cancellation, verification, clarification, maupun metadata penerimaan administratif.
-
-## Monthly Closing
-
-Tidak dibuat closing bulan, lock/reopen periode, stock closing, snapshot laporan, atau rekonsiliasi.
-
-## Testing
-
-### Feature Test
-
-PASS — `LaporanPemakaianOutputTest`: **7 test, 45 assertion**.
-
-Cakupan: PDF valid dan download, workbook XLSX yang dibuka kembali, tiga sheet, ringkasan, rekap, leading-zero nomeratur, filter bulan/tahun/Loket, empty period, source immutability, dan denial HTTP langsung.
-
-PASS — laporan Phase 13 dan output Phase 14 bersama: **17 test, 171 assertion**.
-
-### Regression Test
-
-PASS — seluruh Unit/Feature existing dijalankan dalam empat batch deterministik: **160 test, 1.283 assertion**.
-
-### Composer
-
-PASS — `composer validate --strict`. Dependensi direct baru terpasang: `barryvdh/laravel-dompdf` 3.1.2 dan `maatwebsite/excel` 4.0.2.
-
-### PHPStan
-
-PASS — `composer run types:check --no-interaction`: **0 error**.
-
-### Pint
-
-PASS — `vendor/bin/pint --dirty --format agent`.
-
-### npm run check
-
-FAIL terbatas pada **12 berkas formatting pre-existing** di luar scope: `app.tsx`, `app-sidebar-header.tsx`, `nav-user.tsx`, `two-factor-setup-modal.tsx`, `user-info.tsx`, `auth/login.tsx`, `baps/index.tsx`, `dashboard.tsx`, `allocations/create.tsx`, `allocations/index.tsx`, `boxes/index.tsx`, dan `users/index.tsx`.
-
-Pemeriksaan terarah halaman laporan dan CSS print lulus format/lint.
-
-### npm run types:check
-
-FAIL baseline di luar scope: 20 pemanggilan Wayfinder `.form()` pada modul auth, 2FA, BAP, inventory, settings, dan users tidak cocok dengan tipe Wayfinder yang digenerate saat ini. Tidak ada diagnostik dari `resources/js/pages/laporan-pemakaian/index.tsx`.
-
-### npm run build
-
-PASS — Vite build, generation Wayfinder, CSS print, dan chunk `laporan-pemakaian` berhasil dibangun.
-
-### git diff --check
-
-PASS — tidak ada whitespace error.
-
-## Known Issues
-
-- `npm run check` global memiliki 12 formatting issue pre-existing di luar scope.
-- `npm run types:check` global memiliki 20 error Wayfinder `.form()` pre-existing di luar scope.
-- Browser interaktif desktop/mobile, Light/Dark, print preview fisik, dan aksesibilitas belum tervalidasi karena Browser Pest tidak tersedia.
-- Query plan serta efektivitas index pada MySQL target belum tervalidasi; bukti query berasal dari SQLite lokal.
-
-## Technical Debt
-
-- Belum ada template atau kontrak dokumen resmi per Loket, harian, maupun nomeratur.
-- Belum ada nomor register, tanda tangan, QR/barcode, atau kebijakan retensi output.
-- Timezone bisnis operasional belum diputuskan; konfigurasi aplikasi masih UTC.
-- Print seluruh detail terfilter belum memiliki route khusus; output lengkap tersedia melalui PDF/XLSX.
-
-## Open Questions
-
-1. Apakah PDF/XLSX ini perlu disahkan menjadi dokumen administrasi resmi?
-   - Keputusan yang dibutuhkan: template, ukuran/orientasi, penandatangan, nomor register, QR/barcode, audience, dan approval.
-2. Apakah export harus memiliki audit trail dan/atau arsip file?
-   - Keputusan yang dibutuhkan: actor, timestamp, hash, retensi, akses ulang, dan apakah generation harus diregister.
-3. Apakah detail BAP harus memiliki PDF/print individual dari Slide-over atau halaman detail?
-   - Keputusan yang dibutuhkan: sumber layout BAP resmi dan status dokumen.
-4. Apakah laporan persediaan bulanan/historical month-end diperlukan?
-   - Keputusan yang dibutuhkan: definisi saldo, cutoff, closing/snapshot, koreksi, dan tanggung jawab rekonsiliasi.
-5. Timezone bisnis apa yang menjadi batas periode operasional?
-   - Opsi saat ini: UTC aplikasi atau timezone operasional seperti Asia/Makassar.
-6. Apakah Petugas Loket perlu akses laporan yang dibatasi Loket?
-   - Dampak: Gate, query server-side, navigasi, dan test isolasi Loket berubah.
-
-## Keputusan Teknis
-
-- Query layer `SkpdLaporanPemakaianQuery` dipakai bersama oleh web, PDF, dan XLSX untuk menjaga filter dan aggregate konsisten.
-- PDF menggunakan Dompdf dan Blade; XLSX menggunakan Laravel Excel dengan tiga sheet; keduanya dihasilkan on-demand.
-- Nomeratur XLSX dipaksa sebagai teks tujuh digit dan nilai nol dipertahankan dengan strict null comparison.
-- Print menggunakan `window.print()` dan CSS `@media print`, tanpa endpoint print atau state baru.
-- Tidak ada migration, snapshot, ledger tambahan, file persistence, atau mutation domain.
-
-## Keputusan Bisnis
-
-- Terminologi status final tetap **Selesai Administratif** (`completed`).
-- Online dan batal/rusak tetap termasuk dalam total SKPD terpakai.
-- Bendahara Barang dan Kepala UPTD tetap menjadi audience laporan read-only.
-- Keluaran Phase 14 adalah **Laporan Sistem**, bukan klaim format dokumen resmi.
-
-## Batasan Phase Berikutnya
-
-Phase berikutnya tidak boleh menambahkan format dokumen resmi, BAP PDF individual, stock closing, historical inventory, register output, audit export, atau scope Loket baru tanpa keputusan bisnis tertulis.
-
-## Handoff
-
-Phase 14 selesai. Tahap selanjutnya dimulai hanya setelah salah satu open question di atas diputuskan, terutama format administrasi resmi dan kebijakan audit/retensi output bila keluaran akan digunakan di luar laporan sistem.
+Release/merge sebaiknya ditahan sampai formatting CI diselesaikan. Deployment production wajib menunggu checklist environment dan validasi MySQL/backup/observability/browser di atas. Tidak ada Phase 16 atau fitur bisnis baru yang dikerjakan dalam audit ini.

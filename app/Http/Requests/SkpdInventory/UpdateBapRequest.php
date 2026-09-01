@@ -50,6 +50,12 @@ class UpdateBapRequest extends FormRequest
             $numeratorEnd = (int) $this->input('numerator_end');
             $onlineUsageCount = (int) $this->input('online_usage_count');
 
+            if ($numeratorStart < 1) {
+                $validator->errors()->add('numerator_start', 'Nomeratur awal minimal 0000001.');
+
+                return;
+            }
+
             if ($numeratorEnd < $numeratorStart) {
                 $validator->errors()->add('numerator_end', 'Nomeratur akhir harus sama dengan atau lebih besar dari nomeratur awal.');
 

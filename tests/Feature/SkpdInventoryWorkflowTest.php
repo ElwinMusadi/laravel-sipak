@@ -104,6 +104,25 @@ test('registration rejects an invalid Box range before it reaches the domain act
     $this->assertDatabaseMissing('skpd_boxes', ['box_number' => 'BOX-INVALID']);
 });
 
+test('registration rejects the zero numerator boundary before it reaches the domain action', function () {
+    $bendahara = phaseFiveBendahara();
+
+    $this->actingAs($bendahara)
+        ->from(route('skpd.boxes.create'))
+        ->post(route('skpd.boxes.store'), [
+            'box_number' => 'BOX-ZERO-BOUNDARY',
+            'numerator_start' => '0000000',
+            'numerator_end' => '0000001',
+            'received_at' => '2026-08-30',
+        ])
+        ->assertRedirect(route('skpd.boxes.create'))
+        ->assertSessionHasErrors([
+            'numerator_start' => 'Nomeratur awal minimal 0000001.',
+        ]);
+
+    $this->assertDatabaseMissing('skpd_boxes', ['box_number' => 'BOX-ZERO-BOUNDARY']);
+});
+
 test('non-bendahara roles cannot register a Box through direct HTTP requests', function () {
     $petugas = User::factory()->create(['role' => UserRole::PetugasPenetapan]);
 

@@ -7,6 +7,7 @@ use App\Actions\SkpdInventory\CreateSkpdAllocation;
 use App\Actions\SkpdInventory\RecordBapCancellation;
 use App\Actions\SkpdInventory\RegisterSkpdBox;
 use App\Actions\SkpdInventory\SubmitBap;
+use App\Actions\SkpdInventory\UpdateBap;
 use App\BapCancellationReason;
 use App\BapStatus;
 use App\Models\Bap;
@@ -91,6 +92,41 @@ test('rejects an invalid box range', function () {
         ->toThrow(ValidationException::class);
 
     $this->assertDatabaseMissing('skpd_boxes', ['box_number' => 'BOX-001']);
+});
+
+test('inventory actions reject the zero numerator boundary', function () {
+    $actor = User::factory()->make();
+    $loket = Loket::factory()->make();
+    $box = SkpdBox::factory()->make();
+    $bap = Bap::factory()->make();
+
+    expect(fn () => app(RegisterSkpdBox::class)->handle(
+        $actor,
+        'BOX-ZERO-BOUNDARY',
+        0,
+        1,
+        CarbonImmutable::parse('2026-08-30 09:00:00'),
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => app(CreateSkpdAllocation::class)->handle($actor, $box, $loket, 0, 1))
+        ->toThrow(ValidationException::class);
+
+    expect(fn () => app(CreateBap::class)->handle(
+        $actor,
+        $loket,
+        CarbonImmutable::parse('2026-08-30'),
+        0,
+        1,
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => app(UpdateBap::class)->handle(
+        $actor,
+        $bap,
+        CarbonImmutable::parse('2026-08-30'),
+        0,
+        1,
+        0,
+    ))->toThrow(ValidationException::class);
 });
 
 test('rejects a duplicate box number', function () {
