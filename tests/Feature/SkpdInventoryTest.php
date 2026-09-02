@@ -149,14 +149,19 @@ test('rejects an overlapping box range', function () {
     $this->assertDatabaseMissing('skpd_boxes', ['box_number' => 'BOX-002']);
 });
 
-test('rejects a gap before the next box range', function () {
+test('registers a non-contiguous box range without allowing overlap', function () {
     $actor = User::factory()->create();
     registerBox($actor);
 
-    expect(fn () => registerBox($actor, 5_003_000, 5_004_999, 'BOX-002'))
-        ->toThrow(ValidationException::class);
+    $box = registerBox($actor, 5_003_000, 5_004_999, 'BOX-002');
 
-    $this->assertDatabaseMissing('skpd_boxes', ['box_number' => 'BOX-002']);
+    $this->assertDatabaseHas('skpd_boxes', [
+        'id' => $box->id,
+        'box_number' => 'BOX-002',
+        'numerator_start' => 5_003_000,
+        'numerator_end' => 5_004_999,
+        'total_sets' => 2_000,
+    ]);
 });
 
 test('creates partial allocations for the same loket without moving pending stock', function () {

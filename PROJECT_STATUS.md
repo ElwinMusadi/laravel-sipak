@@ -1,8 +1,23 @@
 # SIPAK — STATUS PROYEK
 
-**Pembaruan terakhir:** 1 September 2026
+**Pembaruan terakhir:** 2 September 2026
 **Fase saat ini:** Phase 19 — Manual Testing Readiness & End-to-End Workflow Hardening
-**Status:** PARTIAL — fixture MySQL dan regresi otomatis siap; validasi browser manual belum dapat dinyatakan lulus.
+**Status:** PARTIAL — regresi otomatis siap; validasi browser manual belum dapat dinyatakan lulus.
+
+## Refinement — Registrasi Range Box Tidak Bersambung
+
+Bendahara Barang dapat mendaftarkan Box SKPD baru dengan range nomeratur yang tidak melanjutkan Box terakhir. Kedatangan Box tidak menjamin urutan nomeratur antar-Box, sehingga kontinuitas global antar-Box bukan lagi business rule.
+
+Validasi yang tetap berlaku:
+
+- nomeratur menggunakan tujuh digit dan minimum `0000001`;
+- akhir range lebih besar dari awal range;
+- nomor Box harus unik;
+- range setiap Box tidak boleh overlap dengan Box lain;
+- total set tetap dihitung dari panjang range;
+- registrasi tetap melalui `RegisterSkpdBox`, transaction lock, dan audit domain.
+
+Perubahan tidak memerlukan migration atau mutasi data existing. Regression ditambahkan pada Action domain dan endpoint HTTP untuk membuktikan range non-contiguous diterima, sementara test overlap tetap dipertahankan.
 
 ## Fase Saat Ini
 
@@ -100,7 +115,7 @@ Regression HTTP memvalidasi create, detail, filter/search, active/inactive, audi
 
 ## Box SKPD
 
-Registration, range tujuh digit, urutan tanpa loncatan, overlap, metadata, status ledger-derived, dan larangan delete jika ada histori telah dicakup oleh feature test. Fixture Phase 19 menggunakan dua Box nyata untuk testing manual, bukan mutable stock.
+Registration, range tujuh digit, range antar-Box yang boleh tidak bersambung, perlindungan overlap, metadata, status ledger-derived, dan larangan delete jika ada histori telah dicakup oleh feature test. Urutan tanpa loncatan hanya berlaku pada pemakaian BAP per Loket, bukan pada kedatangan Box pusat.
 
 ## Distribusi / Alokasi
 
@@ -283,7 +298,8 @@ Tidak ada temuan kosmetik yang dapat diklaim dari browser.
 
 ## Keputusan Bisnis
 
-**Business Decision Required:** sediakan identitas, username, dan credential akun development Kepala UPTD bila pengujian browser Laporan oleh role tersebut harus diselesaikan.
+- Range nomeratur antar-Box SKPD boleh tidak bersambung karena Box yang datang dapat memiliki urutan acak. Uniqueness dan larangan overlap tetap wajib.
+- **Business Decision Required:** sediakan identitas, username, dan credential akun development Kepala UPTD bila pengujian browser Laporan oleh role tersebut harus diselesaikan.
 
 ## Batasan
 

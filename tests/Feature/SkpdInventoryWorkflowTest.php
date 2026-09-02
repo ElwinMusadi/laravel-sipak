@@ -56,10 +56,10 @@ function phaseFiveAllocation(
   );
 }
 
-test('bendahara barang can register a Box through the inventory endpoint', function () {
+test('bendahara barang can register Boxes with non-contiguous ranges through the inventory endpoint', function () {
   $bendahara = phaseFiveBendahara();
 
-  $response = $this->actingAs($bendahara)
+  $firstResponse = $this->actingAs($bendahara)
     ->post(route('skpd.boxes.store'), [
       'box_number' => 'box-phase-05-001',
       'numerator_start' => '0582608',
@@ -67,20 +67,32 @@ test('bendahara barang can register a Box through the inventory endpoint', funct
       'received_at' => '2026-08-30',
     ]);
 
-  $box = SkpdBox::query()->firstOrFail();
+  $firstBox = SkpdBox::query()->where('box_number', 'BOX-PHASE-05-001')->firstOrFail();
 
-  $response->assertRedirect(route('skpd.boxes.show', $box));
+  $firstResponse->assertRedirect(route('skpd.boxes.show', $firstBox));
+
+  $secondResponse = $this->actingAs($bendahara)
+    ->post(route('skpd.boxes.store'), [
+      'box_number' => 'BOX-PHASE-05-002',
+      'numerator_start' => '0700001',
+      'numerator_end' => '0702000',
+      'received_at' => '2026-09-02',
+    ]);
+
+  $secondBox = SkpdBox::query()->where('box_number', 'BOX-PHASE-05-002')->firstOrFail();
+
+  $secondResponse->assertRedirect(route('skpd.boxes.show', $secondBox));
   $this->assertDatabaseHas('skpd_boxes', [
-    'id' => $box->id,
-    'box_number' => 'BOX-PHASE-05-001',
-    'numerator_start' => 582_608,
-    'numerator_end' => 582_620,
-    'total_sets' => 13,
+    'id' => $secondBox->id,
+    'box_number' => 'BOX-PHASE-05-002',
+    'numerator_start' => 700_001,
+    'numerator_end' => 702_000,
+    'total_sets' => 2_000,
     'created_by' => $bendahara->id,
   ]);
   $this->assertDatabaseHas('audit_logs', [
     'auditable_type' => SkpdBox::class,
-    'auditable_id' => $box->id,
+    'auditable_id' => $secondBox->id,
     'event' => 'skpd_box.registered',
   ]);
 });

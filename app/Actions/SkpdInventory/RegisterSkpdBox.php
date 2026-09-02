@@ -58,17 +58,6 @@ class RegisterSkpdBox
                 ]);
             }
 
-            $latestBox = SkpdBox::query()
-                ->orderByDesc('numerator_end')
-                ->lockForUpdate()
-                ->first();
-
-            if ($latestBox !== null && $numeratorStart !== $latestBox->numerator_end + 1) {
-                throw ValidationException::withMessages([
-                    'numerator_start' => 'Range box baru harus melanjutkan nomeratur terakhir tanpa loncatan.',
-                ]);
-            }
-
             $box = SkpdBox::create([
                 'box_number' => $boxNumber,
                 'numerator_start' => $numeratorStart,
