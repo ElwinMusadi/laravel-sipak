@@ -207,9 +207,16 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
                           {formatDateTime(allocation.created_at)}
                         </TableCell> */}
                         <TableCell>
-                          {allocation.accepted_at
-                            ? `${allocation.accepted_by ?? "—"} · ${formatDateTime(allocation.accepted_at)}`
-                            : "Belum diterima"}
+                          {allocation.accepted_at ? (
+                            <>
+                              {allocation.accepted_by ?? "—"}
+                              <p className="text-muted-foreground text-xs">
+                                {formatDateTime(allocation.accepted_at)}
+                              </p>
+                            </>
+                          ) : (
+                            "Belum diterima"
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" asChild>
