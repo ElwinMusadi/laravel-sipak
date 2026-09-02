@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { AllocationStatusBadge } from "@/components/allocation/allocation-status-badge";
 import { EmptyState } from "@/components/app/empty-state";
 import {
+  formatDate,
   formatDateTime,
   formatQuantity,
   formatRange,
@@ -36,6 +37,7 @@ type Allocation = {
   id: number;
   box: { id: number; box_number: string };
   loket: { id: number; name: string };
+  allocation_date: string | null;
   numerator_start: number;
   numerator_end: number;
   quantity: number;
@@ -160,15 +162,16 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
               />
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-7xl">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Box</TableHead>
                       <TableHead>Loket</TableHead>
+                      <TableHead>Tanggal alokasi</TableHead>
                       <TableHead>Range</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Dibuat</TableHead>
+                      {/* <TableHead>Dibuat</TableHead> */}
                       <TableHead>Handover</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
@@ -180,6 +183,11 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
                           {allocation.box.box_number}
                         </TableCell>
                         <TableCell>{allocation.loket.name}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {allocation.allocation_date
+                            ? formatDate(allocation.allocation_date)
+                            : "Belum tercatat"}
+                        </TableCell>
                         <TableCell className="font-mono text-xs whitespace-nowrap">
                           {formatRange(
                             allocation.numerator_start,
@@ -195,9 +203,9 @@ export default function AllocationIndex({ allocations, filters, can }: Props) {
                         <TableCell>
                           <AllocationStatusBadge status={allocation.status} />
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        {/* <TableCell className="whitespace-nowrap">
                           {formatDateTime(allocation.created_at)}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>
                           {allocation.accepted_at
                             ? `${allocation.accepted_by ?? "—"} · ${formatDateTime(allocation.accepted_at)}`

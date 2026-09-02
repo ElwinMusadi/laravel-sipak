@@ -1,5 +1,8 @@
 import { Form, Head, Link } from "@inertiajs/react";
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
 import SkpdAllocationController from "@/actions/App/Http/Controllers/SkpdAllocationController";
 import { EmptyState } from "@/components/app/empty-state";
 import InputError from "@/components/input-error";
@@ -7,8 +10,14 @@ import { formatQuantity, formatRange } from "@/components/inventory/format";
 import { RangeInputFields } from "@/components/inventory/range-input-fields";
 import type { LoketOption } from "@/components/inventory/types";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -17,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Heading from "@/components/heading";
+import { cn } from "@/lib/utils";
 import { create, index } from "@/routes/skpd/allocations";
 
 type BoxOption = {
@@ -36,6 +46,9 @@ type Props = {
 export default function CreateAllocation({ boxes, lokets }: Props) {
   const [boxId, setBoxId] = useState("");
   const [loketId, setLoketId] = useState("");
+  const [allocationDate, setAllocationDate] = useState<Date | undefined>(
+    new Date(),
+  );
   const [numeratorStart, setNumeratorStart] = useState("");
   const [numeratorEnd, setNumeratorEnd] = useState("");
   const selectedBox = useMemo(
@@ -153,6 +166,48 @@ export default function CreateAllocation({ boxes, lokets }: Props) {
                         </SelectContent>
                       </Select>
                       <InputError message={errors.loket_id} />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="allocation_date">Tanggal alokasi</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !allocationDate && "text-muted-foreground",
+                              errors.allocation_date &&
+                                "border-destructive text-destructive",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 size-4" />
+                            {allocationDate ? (
+                              format(allocationDate, "PPP", { locale: id })
+                            ) : (
+                              <span>Pilih tanggal</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={allocationDate}
+                            onSelect={setAllocationDate}
+                            locale={id}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <input
+                        type="hidden"
+                        name="allocation_date"
+                        value={
+                          allocationDate
+                            ? format(allocationDate, "yyyy-MM-dd")
+                            : ""
+                        }
+                      />
+                      <InputError message={errors.allocation_date} />
                     </div>
 
                     <RangeInputFields

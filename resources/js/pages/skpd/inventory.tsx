@@ -41,7 +41,7 @@ type LoketAllocation = {
     numerator_end: number;
     quantity: number;
     status: 'pending' | 'accepted' | 'completed' | 'cancelled';
-    created_at: string | null;
+    allocation_date: string | null;
 };
 
 type LoketMetrics = {
@@ -294,6 +294,11 @@ function LoketInventory({
                                                 allocation.numerator_start,
                                                 allocation.numerator_end,
                                             )}
+                                        </p>
+                                        <p className="text-muted-foreground text-xs">
+                                            {allocation.allocation_date
+                                                ? `Dialokasikan ${formatDate(allocation.allocation_date)}`
+                                                : 'Tanggal alokasi belum tercatat'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3 sm:justify-end">

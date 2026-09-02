@@ -9,6 +9,7 @@ import {
 import SkpdAllocationController from "@/actions/App/Http/Controllers/SkpdAllocationController";
 import { AllocationStatusBadge } from "@/components/allocation/allocation-status-badge";
 import {
+  formatDate,
   formatDateTime,
   formatNomeratur,
   formatQuantity,
@@ -24,6 +25,7 @@ type Allocation = {
   id: number;
   box: { id: number; box_number: string };
   loket: { id: number; name: string };
+  allocation_date: string | null;
   numerator_start: number;
   numerator_end: number;
   quantity: number;
@@ -55,7 +57,12 @@ export default function ShowAllocation({
       <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="space-y-2">
-            <Button variant="ghost" size="sm" asChild>
+            <Button
+              className="pl-0 hover:no-underline"
+              variant="link"
+              size="sm"
+              asChild
+            >
               <Link href={index()}>
                 <ArrowLeft />
                 Kembali ke alokasi
@@ -67,15 +74,15 @@ export default function ShowAllocation({
               </h1>
               <AllocationStatusBadge status={allocation.status} />
             </div>
-            <p className="text-muted-foreground font-mono text-sm">
+            {/* <p className="text-muted-foreground font-mono text-sm">
               {formatRange(
                 allocation.numerator_start,
                 allocation.numerator_end,
               )}
-            </p>
+            </p> */}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap lg:flex-nowrap gap-2">
             {allocation.can.edit ? (
               <Button variant="outline" asChild>
                 <Link href={edit(allocation.id)}>
@@ -125,6 +132,14 @@ export default function ShowAllocation({
                 }
               />
               <DetailRow label="Loket" value={allocation.loket.name} />
+              <DetailRow
+                label="Tanggal alokasi"
+                value={
+                  allocation.allocation_date
+                    ? formatDate(allocation.allocation_date)
+                    : "Belum tercatat"
+                }
+              />
               <DetailRow label="Dibuat oleh" value={allocation.created_by} />
               <DetailRow
                 label="Dibuat pada"

@@ -318,7 +318,7 @@ class SkpdBoxController extends Controller
     }
 
     /**
-     * @return array{id: int, box_number: string, numerator_start: int, numerator_end: int, quantity: int, used_quantity: int, remaining_quantity: int, status: string, loket: array{id: int, name: string}, created_by: string, created_at: string, accepted_by: string|null, accepted_at: string|null}
+     * @return array{id: int, box_number: string, numerator_start: int, numerator_end: int, quantity: int, used_quantity: int, remaining_quantity: int, status: string, loket: array{id: int, name: string}, allocation_date: string|null, created_by: string, created_at: string, accepted_by: string|null, accepted_at: string|null}
      */
     private function allocationData(SkpdAllocation $allocation): array
     {
@@ -334,6 +334,7 @@ class SkpdBoxController extends Controller
             'remaining_quantity' => $allocation->quantity - $usedQuantity,
             'status' => $allocation->status->value,
             'loket' => ['id' => $allocation->loket->id, 'name' => $allocation->loket->name],
+            'allocation_date' => $allocation->allocation_date?->toDateString(),
             'created_by' => $allocation->creator->name,
             'created_at' => $allocation->created_at->toIso8601String(),
             'accepted_by' => $allocation->acceptor?->name,

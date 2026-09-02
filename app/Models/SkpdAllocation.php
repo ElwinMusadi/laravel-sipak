@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $skpd_box_id
  * @property int $loket_id
+ * @property Carbon|null $allocation_date
  * @property int $numerator_start
  * @property int $numerator_end
  * @property int $quantity
@@ -24,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $accepted_by
  * @property Carbon|null $accepted_at
  */
-#[Fillable(['skpd_box_id', 'loket_id', 'numerator_start', 'numerator_end', 'quantity', 'status', 'created_by', 'accepted_by', 'accepted_at'])]
+#[Fillable(['skpd_box_id', 'loket_id', 'allocation_date', 'numerator_start', 'numerator_end', 'quantity', 'status', 'created_by', 'accepted_by', 'accepted_at'])]
 class SkpdAllocation extends Model
 {
     /** @use HasFactory<SkpdAllocationFactory> */
@@ -109,6 +110,7 @@ class SkpdAllocation extends Model
     {
         return [
             'status' => SkpdAllocationStatus::class,
+            'allocation_date' => 'date',
             'accepted_at' => 'datetime',
         ];
     }

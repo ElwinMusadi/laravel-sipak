@@ -29,6 +29,7 @@ class StoreSkpdAllocationRequest extends FormRequest
         return [
             'skpd_box_id' => ['required', 'integer', Rule::exists(SkpdBox::class, 'id')],
             'loket_id' => ['required', 'integer', Rule::exists(Loket::class, 'id')],
+            'allocation_date' => ['required', 'date_format:Y-m-d'],
             'numerator_start' => ['required', 'string', 'regex:/^\d{7}$/'],
             'numerator_end' => ['required', 'string', 'regex:/^\d{7}$/'],
         ];

@@ -91,6 +91,7 @@ class SkpdInventoryController extends Controller
         $allocations = SkpdAllocation::query()
             ->whereBelongsTo($loket)
             ->with(['skpdBox:id,box_number', 'usageSegments'])
+            ->orderByDesc('allocation_date')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
@@ -119,7 +120,7 @@ class SkpdInventoryController extends Controller
                     'numerator_end' => $allocation->numerator_end,
                     'quantity' => $allocation->quantity,
                     'status' => $allocation->status->value,
-                    'created_at' => $allocation->created_at?->toIso8601String(),
+                    'allocation_date' => $allocation->allocation_date?->toDateString(),
                 ])
                 ->values()
                 ->all(),

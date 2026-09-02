@@ -7,6 +7,7 @@ use App\Models\SkpdAllocation;
 use App\Models\SkpdBox;
 use App\Models\User;
 use App\SkpdAllocationStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -18,12 +19,13 @@ class CreateSkpdAllocation
         User $actor,
         SkpdBox $box,
         Loket $loket,
+        CarbonInterface $allocationDate,
         int $numeratorStart,
         int $numeratorEnd,
     ): SkpdAllocation {
         $this->validateRange($numeratorStart, $numeratorEnd);
 
-        return DB::transaction(function () use ($actor, $box, $loket, $numeratorStart, $numeratorEnd): SkpdAllocation {
+        return DB::transaction(function () use ($actor, $box, $loket, $allocationDate, $numeratorStart, $numeratorEnd): SkpdAllocation {
             $this->lockInventory();
 
             $lockedBox = SkpdBox::query()->lockForUpdate()->findOrFail($box->id);
@@ -77,6 +79,7 @@ class CreateSkpdAllocation
             $allocation = SkpdAllocation::create([
                 'skpd_box_id' => $lockedBox->id,
                 'loket_id' => $lockedLoket->id,
+                'allocation_date' => $allocationDate->toDateString(),
                 'numerator_start' => $numeratorStart,
                 'numerator_end' => $numeratorEnd,
                 'quantity' => $numeratorEnd - $numeratorStart + 1,
@@ -87,6 +90,7 @@ class CreateSkpdAllocation
             $this->audit->handle($actor, $allocation, 'skpd_allocation.created', null, [
                 'skpd_box_id' => $allocation->skpd_box_id,
                 'loket_id' => $allocation->loket_id,
+                'allocation_date' => $allocation->allocation_date?->toDateString(),
                 'numerator_start' => $allocation->numerator_start,
                 'numerator_end' => $allocation->numerator_end,
                 'quantity' => $allocation->quantity,

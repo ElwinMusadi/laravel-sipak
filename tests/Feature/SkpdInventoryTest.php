@@ -42,7 +42,14 @@ function registerBox(User $actor, int $numeratorStart = 5_000_000, int $numerato
 
 function allocate(User $actor, SkpdBox $box, Loket $loket, int $numeratorStart, int $numeratorEnd): SkpdAllocation
 {
-    return app(CreateSkpdAllocation::class)->handle($actor, $box, $loket, $numeratorStart, $numeratorEnd);
+    return app(CreateSkpdAllocation::class)->handle(
+        $actor,
+        $box,
+        $loket,
+        CarbonImmutable::parse('2026-08-31'),
+        $numeratorStart,
+        $numeratorEnd,
+    );
 }
 
 function accept(User $actor, SkpdAllocation $allocation): SkpdAllocation
@@ -108,7 +115,14 @@ test('inventory actions reject the zero numerator boundary', function () {
         CarbonImmutable::parse('2026-08-30 09:00:00'),
     ))->toThrow(ValidationException::class);
 
-    expect(fn () => app(CreateSkpdAllocation::class)->handle($actor, $box, $loket, 0, 1))
+    expect(fn () => app(CreateSkpdAllocation::class)->handle(
+        $actor,
+        $box,
+        $loket,
+        CarbonImmutable::parse('2026-08-31'),
+        0,
+        1,
+    ))
         ->toThrow(ValidationException::class);
 
     expect(fn () => app(CreateBap::class)->handle(

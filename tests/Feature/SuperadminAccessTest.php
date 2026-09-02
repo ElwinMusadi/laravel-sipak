@@ -82,6 +82,7 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
         ->post(route('skpd.allocations.store'), [
             'skpd_box_id' => $box->id,
             'loket_id' => $loket->id,
+            'allocation_date' => now()->toDateString(),
             'numerator_start' => '5826080',
             'numerator_end' => '5826092',
         ])
@@ -108,6 +109,7 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
         ->post(route('skpd.allocations.store'), [
             'skpd_box_id' => $cancelledBox->id,
             'loket_id' => $loket->id,
+            'allocation_date' => now()->toDateString(),
             'numerator_start' => '5826093',
             'numerator_end' => '5826105',
         ])

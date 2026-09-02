@@ -31,6 +31,7 @@ class SkpdAllocationFactory extends Factory
                 'total_sets' => 2_000,
             ]),
             'loket_id' => Loket::factory(),
+            'allocation_date' => today(),
             'numerator_start' => $numeratorStart,
             'numerator_end' => $numeratorEnd,
             'quantity' => 2_000,

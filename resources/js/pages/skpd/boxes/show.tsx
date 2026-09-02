@@ -37,6 +37,7 @@ type Allocation = {
   remaining_quantity: number;
   status: "pending" | "accepted" | "completed" | "cancelled";
   loket: { id: number; name: string };
+  allocation_date: string | null;
   created_by: string;
   created_at: string;
   accepted_by: string | null;
@@ -179,11 +180,14 @@ export default function ShowBox({ box, can }: Props) {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table className="w-full min-w-[45rem] text-sm">
+                <Table className="w-full min-w-[55rem] text-sm">
                   <TableHeader className="text-muted-foreground border-b text-left">
                     <TableRow>
                       <TableHead className="px-2 py-3 font-medium">
                         Loket
+                      </TableHead>
+                      <TableHead className="px-2 py-3 font-medium">
+                        Tanggal alokasi
                       </TableHead>
                       <TableHead className="px-2 py-3 font-medium">
                         Range
@@ -212,6 +216,11 @@ export default function ShowBox({ box, can }: Props) {
                           <p className="text-muted-foreground text-xs">
                             Dibuat oleh {allocation.created_by}
                           </p>
+                        </TableCell>
+                        <TableCell className="px-2 py-3 whitespace-nowrap">
+                          {allocation.allocation_date
+                            ? formatDate(allocation.allocation_date)
+                            : "Belum tercatat"}
                         </TableCell>
                         <TableCell className="px-2 py-3 font-mono text-xs whitespace-nowrap">
                           {formatRange(
