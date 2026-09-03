@@ -25,9 +25,6 @@ Route::middleware(['auth', 'active'])->group(function () {
     ->name('bap-cancellations.')
     ->group(function (): void {
       Route::get('/', [SkpdBapCancellationController::class, 'index'])->name('index');
-      Route::get('create', [SkpdBapCancellationController::class, 'createEntry'])
-        ->middleware('can:create-bap-cancellations')
-        ->name('create');
       Route::get('{bapCancellation}', [SkpdBapCancellationController::class, 'show'])->name('show');
     });
 
@@ -83,12 +80,6 @@ Route::middleware(['auth', 'active'])->group(function () {
       Route::post('/', [SkpdBapController::class, 'store'])
         ->middleware('can:create-bap')
         ->name('store');
-      Route::get('{bap}/cancellations/create', [SkpdBapCancellationController::class, 'create'])
-        ->middleware('can:create-bap-cancellation,bap')
-        ->name('cancellations.create');
-      Route::post('{bap}/cancellations', [SkpdBapCancellationController::class, 'store'])
-        ->middleware('can:create-bap-cancellation,bap')
-        ->name('cancellations.store');
       Route::get('{bap}', [SkpdBapController::class, 'show'])->name('show');
       Route::get('{bap}/edit', [SkpdBapController::class, 'edit'])->name('edit');
       Route::put('{bap}', [SkpdBapController::class, 'update'])->name('update');

@@ -5,327 +5,117 @@ use App\BapStatus;
 use App\Models\Bap;
 use App\Models\BapCancellation;
 use App\Models\Loket;
-use App\Models\SkpdAllocation;
-use App\Models\SkpdBox;
 use App\Models\User;
-use App\SkpdAllocationStatus;
 use App\UserRole;
 use Illuminate\Database\QueryException;
 use Inertia\Testing\AssertableInertia as Assert;
 
-function cancellationPetugas(Loket $loket, ?string $name = null): User
+function historicalCancellationPetugas(Loket $loket): User
 {
     return User::factory()->create([
-        'name' => $name ?? 'Petugas Cancellation',
         'role' => UserRole::PetugasLoket,
         'loket_id' => $loket->id,
     ]);
 }
 
-function cancellationAllocation(
-    User $petugas,
-    Loket $loket,
-    int $numeratorStart = 582_608,
-    int $numeratorEnd = 582_620,
-): SkpdAllocation {
-    $box = SkpdBox::factory()->create([
-        'box_number' => 'BOX-CANCELLATION-'.fake()->unique()->bothify('####??'),
-        'numerator_start' => $numeratorStart,
-        'numerator_end' => $numeratorEnd,
-        'total_sets' => $numeratorEnd - $numeratorStart + 1,
-    ]);
-
-    return SkpdAllocation::factory()->create([
-        'skpd_box_id' => $box->id,
+/**
+ * @return array{bap: Bap, cancellation: BapCancellation}
+ */
+function historicalCancellationFixture(User $petugas, Loket $loket): array
+{
+    $bap = Bap::factory()->create([
         'loket_id' => $loket->id,
-        'numerator_start' => $numeratorStart,
-        'numerator_end' => $numeratorEnd,
-        'quantity' => $numeratorEnd - $numeratorStart + 1,
-        'status' => SkpdAllocationStatus::Accepted,
-        'accepted_by' => $petugas->id,
-        'accepted_at' => now(),
-    ]);
-}
-
-/**
- * @return array{service_date: string, numerator_start: string, numerator_end: string, online_usage_count: int}
- */
-function cancellationBapPayload(
-    int $numeratorStart = 582_608,
-    int $numeratorEnd = 582_620,
-): array {
-    return [
+        'created_by' => $petugas->id,
         'service_date' => now()->toDateString(),
-        'numerator_start' => str_pad((string) $numeratorStart, 7, '0', STR_PAD_LEFT),
-        'numerator_end' => str_pad((string) $numeratorEnd, 7, '0', STR_PAD_LEFT),
+        'numerator_start' => 582_608,
+        'numerator_end' => 582_620,
+        'total_usage' => 13,
         'online_usage_count' => 0,
-    ];
-}
+        'status' => BapStatus::Draft,
+    ]);
 
-/**
- * @return array{bap: Bap, allocation: SkpdAllocation}
- */
-function cancellableBap(
-    User $petugas,
-    Loket $loket,
-    int $numeratorStart = 582_608,
-    int $numeratorEnd = 582_620,
-    int $allocationEnd = 582_620,
-): array {
-    $allocation = cancellationAllocation(
-        $petugas,
-        $loket,
-        $numeratorStart,
-        $allocationEnd,
-    );
-
-    test()->actingAs($petugas)
-        ->post(
-            route('baps.store'),
-            cancellationBapPayload($numeratorStart, $numeratorEnd),
-        )
-        ->assertRedirect();
-
-    return [
-        'bap' => Bap::query()->sole(),
-        'allocation' => $allocation,
-    ];
-}
-
-/**
- * @return array{numerator: string, reason: string, description: string}
- */
-function cancellationPayload(
-    string $numerator = '0582612',
-    BapCancellationReason $reason = BapCancellationReason::Damaged,
-    string $description = 'Cetakan tidak dapat digunakan.',
-): array {
-    return [
-        'numerator' => $numerator,
-        'reason' => $reason->value,
-        'description' => $description,
-    ];
-}
-
-test('Petugas Loket records an individual cancellation without changing BAP usage or allocation ledger', function () {
-    $loket = Loket::factory()->create(['name' => 'Loket Cancellation']);
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap, 'allocation' => $allocation] = cancellableBap(
-        $petugas,
-        $loket,
-        numeratorEnd: 582_615,
-    );
-
-    $this->actingAs($petugas)
-        ->post(
-            route('baps.cancellations.store', $bap),
-            cancellationPayload('582612'),
-        )
-        ->assertRedirect();
-
-    $cancellation = BapCancellation::query()->sole();
-
-    $this->assertDatabaseHas('bap_cancellations', [
-        'id' => $cancellation->id,
+    $cancellation = BapCancellation::create([
         'bap_id' => $bap->id,
         'numerator' => 582_612,
-        'reason' => BapCancellationReason::Damaged->value,
+        'reason' => BapCancellationReason::Damaged,
+        'description' => 'Cetakan historis tidak dapat digunakan.',
         'created_by' => $petugas->id,
     ]);
-    $this->assertDatabaseHas('audit_logs', [
-        'auditable_type' => Bap::class,
-        'auditable_id' => $bap->id,
-        'event' => 'bap_cancellation.recorded',
-    ]);
 
-    expect($bap->refresh()->total_usage)->toBe(8)
-        ->and($bap->normalUsageQuantity())->toBe(7)
-        ->and($allocation->refresh()->status)->toBe(SkpdAllocationStatus::Accepted)
-        ->and((int) $allocation->usageSegments()->sum('quantity'))->toBe(8);
+    return compact('bap', 'cancellation');
+}
 
-    $this->actingAs($petugas)
-        ->get(route('baps.show', $bap))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('baps/show')
-            ->where('bap.total_usage', 8)
-            ->where('bap.cancellations.quantity', 1)
-            ->where('bap.cancellations.normal_usage_quantity', 7)
-            ->where('bap.cancellations.items.0.numerator', 582_612)
-            ->etc(),
-        );
-});
-
-test('multiple cancellations are listed individually with the correct BAP summary', function () {
+test('historical cancellation is listed read-only with its parent BAP context', function () {
     $loket = Loket::factory()->create();
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap] = cancellableBap($petugas, $loket);
-
-    foreach ([
-        ['0582610', BapCancellationReason::Cancelled],
-        ['0582612', BapCancellationReason::Damaged],
-        ['0582617', BapCancellationReason::Cancelled],
-    ] as [$numerator, $reason]) {
-        $this->actingAs($petugas)
-            ->post(
-                route('baps.cancellations.store', $bap),
-                cancellationPayload($numerator, $reason),
-            )
-            ->assertRedirect();
-    }
-
-    $this->assertDatabaseCount('bap_cancellations', 3);
+    $petugas = historicalCancellationPetugas($loket);
+    ['bap' => $bap, 'cancellation' => $cancellation] = historicalCancellationFixture($petugas, $loket);
 
     $this->actingAs($petugas)
         ->get(route('bap-cancellations.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('bap-cancellations/index')
-            ->has('cancellations.data', 3)
-            ->where('cancellations.data.0.bap_id', $bap->id)
+            ->where('cancellations.data.0.id', $cancellation->id)
+            ->where('cancellations.data.0.reason_label', 'Rusak')
+            ->where('cancellations.data.0.bap_document_number', $bap->document_number)
             ->etc(),
         );
-
-    $cancellation = BapCancellation::query()->where('numerator', 582_612)->sole();
 
     $this->actingAs($petugas)
         ->get(route('bap-cancellations.show', $cancellation))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('bap-cancellations/show')
-            ->where('cancellation.numerator', 582_612)
-            ->where('cancellation.bap.total_usage', 13)
-            ->where('cancellation.bap.cancellation_quantity', 3)
-            ->where('cancellation.bap.normal_usage_quantity', 10)
+            ->where('cancellation.id', $cancellation->id)
+            ->where('cancellation.reason_label', 'Rusak')
+            ->where('cancellation.bap.document_number', $bap->document_number)
             ->etc(),
         );
 });
 
-test('cancellation rejects a numerator that is outside BAP usage and an invalid numerator format', function () {
+test('historical cancellations preserve legacy reason values while new reasons remain castable', function () {
     $loket = Loket::factory()->create();
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap] = cancellableBap(
-        $petugas,
-        $loket,
-        numeratorEnd: 582_620,
-        allocationEnd: 582_630,
-    );
+    $petugas = historicalCancellationPetugas($loket);
+    ['bap' => $bap, 'cancellation' => $legacy] = historicalCancellationFixture($petugas, $loket);
 
-    $this->actingAs($petugas)
-        ->from(route('baps.cancellations.create', $bap))
-        ->post(
-            route('baps.cancellations.store', $bap),
-            cancellationPayload('0582630'),
-        )
-        ->assertRedirect(route('baps.cancellations.create', $bap))
-        ->assertSessionHasErrors([
-            'numerator' => 'Nomeratur tersebut belum tercatat sebagai pemakaian pada BAP ini.',
-        ]);
+    $newReason = BapCancellation::create([
+        'bap_id' => $bap->id,
+        'numerator' => 582_613,
+        'reason' => BapCancellationReason::PrinterError,
+        'description' => null,
+        'created_by' => $petugas->id,
+    ]);
 
-    $this->actingAs($petugas)
-        ->from(route('baps.cancellations.create', $bap))
-        ->post(
-            route('baps.cancellations.store', $bap),
-            cancellationPayload('05826123'),
-        )
-        ->assertRedirect(route('baps.cancellations.create', $bap))
-        ->assertSessionHasErrors([
-            'numerator' => 'Nomeratur harus berupa angka maksimal tujuh digit.',
-        ]);
-
-    $this->assertDatabaseCount('bap_cancellations', 0);
+    expect($legacy->refresh()->reason)->toBe(BapCancellationReason::Damaged)
+        ->and($legacy->reason->label())->toBe('Rusak')
+        ->and($newReason->refresh()->reason)->toBe(BapCancellationReason::PrinterError)
+        ->and($newReason->reason->label())->toBe('Printer Error');
 });
 
-test('cancellation rejects a duplicate numerator through the domain action', function () {
+test('cancellation numerator remains globally unique for historical integrity', function () {
     $loket = Loket::factory()->create();
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap] = cancellableBap($petugas, $loket);
-
-    $this->actingAs($petugas)
-        ->post(
-            route('baps.cancellations.store', $bap),
-            cancellationPayload(),
-        )
-        ->assertRedirect();
-
-    $this->actingAs($petugas)
-        ->from(route('baps.cancellations.create', $bap))
-        ->post(
-            route('baps.cancellations.store', $bap),
-            cancellationPayload('0582612', BapCancellationReason::Cancelled),
-        )
-        ->assertRedirect(route('baps.cancellations.create', $bap))
-        ->assertSessionHasErrors([
-            'numerator' => 'Nomeratur batal atau rusak sudah pernah dicatat dan tidak dapat digunakan ulang.',
-        ]);
-
-    $this->assertDatabaseCount('bap_cancellations', 1);
-});
-
-test('cancellation mutation is limited to the BAP creator and cannot be deleted freely', function () {
-    $loket = Loket::factory()->create();
-    $owner = cancellationPetugas($loket, 'Pembuat BAP');
-    $sameLoketUser = cancellationPetugas($loket, 'Petugas Loket Sama');
-    $otherLoketUser = cancellationPetugas(Loket::factory()->create(), 'Petugas Loket Lain');
-    $bendahara = User::factory()->create(['role' => UserRole::BendaharaBarang]);
-    ['bap' => $bap] = cancellableBap($owner, $loket);
-
-    $this->actingAs($sameLoketUser)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertForbidden();
-    $this->actingAs($otherLoketUser)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertForbidden();
-    $this->actingAs($bendahara)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertForbidden();
-
-    $this->actingAs($owner)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertRedirect();
-
-    $cancellation = BapCancellation::query()->sole();
-
-    $this->actingAs($owner)
-        ->delete(route('bap-cancellations.show', $cancellation))
-        ->assertMethodNotAllowed();
-
-    $this->assertDatabaseCount('bap_cancellations', 1);
-});
-
-test('submitted BAP does not accept a new cancellation', function () {
-    $loket = Loket::factory()->create();
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap] = cancellableBap($petugas, $loket);
-
-    $this->actingAs($petugas)
-        ->post(route('baps.submit', $bap))
-        ->assertRedirect();
-
-    expect($bap->refresh()->status)->toBe(BapStatus::Submitted);
-
-    $this->actingAs($petugas)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertForbidden();
-
-    $this->assertDatabaseCount('bap_cancellations', 0);
-});
-
-test('database unique constraint prevents a second cancellation for the same numerator', function () {
-    $loket = Loket::factory()->create();
-    $petugas = cancellationPetugas($loket);
-    ['bap' => $bap] = cancellableBap($petugas, $loket);
-
-    $this->actingAs($petugas)
-        ->post(route('baps.cancellations.store', $bap), cancellationPayload())
-        ->assertRedirect();
+    $petugas = historicalCancellationPetugas($loket);
+    ['bap' => $bap, 'cancellation' => $cancellation] = historicalCancellationFixture($petugas, $loket);
 
     expect(fn () => BapCancellation::create([
         'bap_id' => $bap->id,
-        'numerator' => 582_612,
-        'reason' => BapCancellationReason::Cancelled,
+        'numerator' => $cancellation->numerator,
+        'reason' => BapCancellationReason::NetworkError,
         'created_by' => $petugas->id,
     ]))->toThrow(QueryException::class);
+});
+
+test('standalone cancellation routes are read-only and BAP mutation remains unified', function () {
+    $loket = Loket::factory()->create();
+    $petugas = historicalCancellationPetugas($loket);
+    ['bap' => $bap] = historicalCancellationFixture($petugas, $loket);
+
+    $this->actingAs($petugas)
+        ->post("/baps/{$bap->id}/cancellations", [
+            'numerator' => '0582613',
+            'reason' => BapCancellationReason::NetworkError->value,
+        ])
+        ->assertNotFound();
 
     $this->assertDatabaseCount('bap_cancellations', 1);
 });

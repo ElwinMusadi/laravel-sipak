@@ -128,6 +128,7 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
             'numerator_start' => '5826080',
             'numerator_end' => '5826092',
             'online_usage_count' => 5,
+            'cancellation_count' => 0,
         ])
         ->assertRedirect();
     $bap = Bap::query()->sole();
@@ -138,14 +139,14 @@ test('Superadmin without a Loket can administer all available SIPAK workflows wh
             'numerator_start' => '5826080',
             'numerator_end' => '5826092',
             'online_usage_count' => 6,
-        ])
-        ->assertRedirect();
-
-    $this->actingAs($superadmin)
-        ->post(route('baps.cancellations.store', $bap), [
-            'numerator' => '5826081',
-            'reason' => BapCancellationReason::Damaged->value,
-            'description' => 'Bukti rusak dicatat oleh Superadmin.',
+            'cancellation_count' => 1,
+            'cancellations' => [
+                [
+                    'numerator' => '5826081',
+                    'reason' => BapCancellationReason::PrinterError->value,
+                    'description' => '',
+                ],
+            ],
         ])
         ->assertRedirect();
     $cancellation = BapCancellation::query()->sole();

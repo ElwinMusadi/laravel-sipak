@@ -2,6 +2,7 @@
 
 namespace App\Actions\SkpdInventory;
 
+use App\BapCancellationReason;
 use App\BapStatus;
 use App\Models\Bap;
 use App\Models\BapUsageSegment;
@@ -15,8 +16,14 @@ use Illuminate\Validation\ValidationException;
 
 class UpdateBap
 {
-    public function __construct(private readonly RecordDomainAudit $audit) {}
+    public function __construct(
+        private readonly RecordDomainAudit $audit,
+        private readonly SynchronizeBapCancellations $syncCancellations,
+    ) {}
 
+    /**
+     * @param  list<array{numerator: int, reason: BapCancellationReason, description: string|null}>  $cancellations
+     */
     public function handle(
         User $actor,
         Bap $bap,
@@ -24,6 +31,8 @@ class UpdateBap
         int $numeratorStart,
         int $numeratorEnd,
         int $onlineUsageCount,
+        int $cancellationCount = 0,
+        array $cancellations = [],
     ): Bap {
         $this->validateRange($numeratorStart, $numeratorEnd);
 
@@ -35,7 +44,7 @@ class UpdateBap
             ]);
         }
 
-        return DB::transaction(function () use ($actor, $bap, $serviceDate, $numeratorStart, $numeratorEnd, $onlineUsageCount, $totalUsage): Bap {
+        return DB::transaction(function () use ($actor, $bap, $serviceDate, $numeratorStart, $numeratorEnd, $onlineUsageCount, $totalUsage, $cancellationCount, $cancellations): Bap {
             $this->lockInventory();
 
             $lockedBap = Bap::query()->lockForUpdate()->findOrFail($bap->id);
@@ -175,6 +184,10 @@ class UpdateBap
                 'segments' => $segments,
                 'total_usage' => $totalUsage,
             ]);
+
+            // Synchronise cancellation child rows inside the same transaction.
+            // This also fixes the orphan-cancellation gap when the range is narrowed.
+            $this->syncCancellations->handle($actor, $lockedBap, $cancellationCount, $cancellations);
 
             return $lockedBap;
         }, attempts: 3);

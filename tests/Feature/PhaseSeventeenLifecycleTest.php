@@ -42,7 +42,7 @@ function phaseSeventeenAcceptedAllocation(User $petugas, Loket $loket): SkpdAllo
 }
 
 /**
- * @return array{service_date: string, numerator_start: string, numerator_end: string, online_usage_count: int}
+ * @return array{service_date: string, numerator_start: string, numerator_end: string, online_usage_count: int, cancellation_count: int}
  */
 function phaseSeventeenBapPayload(): array
 {
@@ -51,6 +51,7 @@ function phaseSeventeenBapPayload(): array
         'numerator_start' => '5826080',
         'numerator_end' => '5826084',
         'online_usage_count' => 2,
+        'cancellation_count' => 0,
     ];
 }
 
@@ -226,15 +227,6 @@ test('only a history-free draft BAP can be deleted and its allocation returns to
         ->assertRedirect();
 
     $bap = Bap::query()->sole();
-
-    $this->actingAs($petugas)
-        ->get(route('bap-cancellations.create'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('bap-cancellations/create-entry')
-            ->where('baps.0.id', $bap->id)
-            ->etc(),
-        );
 
     $this->actingAs($petugas)
         ->delete(route('baps.destroy', $bap))

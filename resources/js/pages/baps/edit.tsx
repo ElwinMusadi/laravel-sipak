@@ -3,6 +3,8 @@ import { BapForm } from '@/components/bap/bap-form';
 import Heading from '@/components/heading';
 import { index } from '@/routes/baps';
 
+type CancellationReason = { value: string; label: string };
+
 type Props = {
     bap: {
         id: number;
@@ -12,10 +14,17 @@ type Props = {
         numerator_end: number;
         online_usage_count: number;
         loket: { id: number; name: string };
+        cancellation_count: number;
+        cancellations: {
+            numerator: number;
+            reason: string;
+            description: string | null;
+        }[];
     };
+    cancellation_reasons: CancellationReason[];
 };
 
-export default function EditBap({ bap }: Props) {
+export default function EditBap({ bap, cancellation_reasons }: Props) {
     return (
         <>
             <Head title={`Ubah draft ${bap.document_number}`} />
@@ -26,7 +35,11 @@ export default function EditBap({ bap }: Props) {
                     description="Periksa kembali range, total otomatis, dan pemakaian online sebelum BAP diajukan."
                 />
 
-                <BapForm mode="edit" bap={bap} />
+                <BapForm
+                    mode="edit"
+                    bap={bap}
+                    cancellationReasons={cancellation_reasons}
+                />
             </main>
         </>
     );

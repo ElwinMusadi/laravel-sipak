@@ -4,6 +4,45 @@
 **Fase saat ini:** Phase 19 — Manual Testing Readiness & End-to-End Workflow Hardening
 **Status:** PARTIAL — regresi otomatis siap; validasi browser manual belum dapat dinyatakan lulus.
 
+## Refinement — Unified BAP Pemakaian + BAP Batal/Rusak
+
+BAP Pemakaian dan detail Batal/Rusak kini memakai satu form BAP dan satu parent document identity. `bap_cancellations` tetap dipertahankan sebagai child record dari `baps`; tidak ada tabel historis yang dihapus atau data cancellation lama yang dimutasi.
+
+### Workflow
+
+- Form BAP memiliki `SKPD Batal/Rusak` dengan nilai awal `0`.
+- Bila jumlah lebih dari `0`, form menampilkan jumlah row detail yang sama secara dinamis.
+- Setiap detail memuat nomeratur tujuh digit dan alasan `Jaringan Error`, `Printer Error`, atau `Isi Sendiri`.
+- `Isi Sendiri` wajib mengisi `description` existing.
+- `total_usage` tetap derived dari range; Online dan Batal/Rusak tidak mengurangi total.
+- Review form menunjukkan Total, Online, Batal/Rusak, dan Pemakaian normal (`total - online - batal/rusak`).
+- Create dan update draft menyimpan atau menyinkronkan BAP, usage segment, cancellation, dan audit dalam satu transaction inventory lock.
+- Update draft mendukung transisi `0→1`, `1→2`, dan `2→1`; row yang hilang dari payload dihapus dengan audit `bap_cancellation.removed`.
+- Draft update ditolak bila detail cancellation final berada di luar range BAP. Submitted dan completed tetap immutable.
+
+### Data dan Route
+
+- Migration `2026_09_03_120508_extend_bap_cancellations_reason_for_unified_bap` memperluas MySQL CHECK `reason` secara additive: nilai lama `cancelled`/`damaged` tetap valid, sementara value baru adalah `network_error`, `printer_error`, dan `custom`.
+- Route Batal/Rusak standalone kini read-only: hanya index dan detail historis. Route create/store nested maupun top-level dihapus.
+- Menu sidebar `BAP Batal/Rusak` dihapus. BAP SKPD adalah workflow write utama.
+- Wayfinder diregenerasi setelah perubahan route.
+
+### Downstream
+
+- Verification Tahap 1/2 tetap menghitung checklist Batal/Rusak dari child `bap_cancellations` dan menampilkan reason label dari enum bersama.
+- Receipt, Buku Kendali, Laporan, PDF, dan XLSX tetap memakai aggregate child cancellation yang sama sehingga tidak melakukan double count.
+- Historical cancellation tetap dapat dibaca dengan label lama (`Batal`/`Rusak`) atau label alasan baru secara konsisten.
+
+### Testing
+
+- SQLite: `php artisan test --compact` PASS — 194 test, 1.737 assertion.
+- MySQL: `php artisan test --configuration=phpunit.mysql.xml --compact` PASS — 194 test, 1.737 assertion.
+- PHPStan: PASS — 0 error.
+- TypeScript: PASS.
+- Build + Wayfinder: PASS.
+- `git diff --check`: PASS.
+- Browser automation/print visual tetap tidak tersedia.
+
 ## Refinement — Registrasi Range Box Tidak Bersambung
 
 Bendahara Barang dapat mendaftarkan Box SKPD baru dengan range nomeratur yang tidak melanjutkan Box terakhir. Kedatangan Box tidak menjamin urutan nomeratur antar-Box, sehingga kontinuitas global antar-Box bukan lagi business rule.
@@ -37,7 +76,7 @@ Phase 19 menyiapkan data development dan bukti regresi untuk workflow yang telah
 ## Database
 
 - Default aplikasi: `mysql`.
-- `php artisan migrate:status` menunjukkan 20 migration berstatus `Ran`.
+- `php artisan migrate:status` menunjukkan 23 migration berstatus `Ran`, termasuk `allocation_date`, nomor dokumen BAP, dan extension reason Unified BAP.
 - Schema domain tersedia: `users`, `lokets`, `skpd_boxes`, `skpd_allocations`, `baps`, `bap_usage_segments`, `bap_cancellations`, tabel verifikasi/klarifikasi, dan `audit_logs`.
 - Penerimaan administratif tersimpan pada kolom `received_by`, `received_at`, dan `receipt_notes` di `baps`; tidak ada tabel receipt terpisah.
 - SQLite tetap dipakai oleh `phpunit.xml`; MySQL suite memakai `phpunit.mysql.xml` dan database `sipak_testing` terpisah.
@@ -218,11 +257,11 @@ BLOCKED — tidak ada tool automation/interaksi browser pada environment agent. 
 
 ### MySQL
 
-PASS — `php artisan test --configuration=phpunit.mysql.xml --compact`: 178 test, 1.683 assertion lulus. Output runner menyatakan `passed`; wrapper CLI mengembalikan exit code non-zero walaupun payload result adalah PASS.
+PASS — `php artisan test --configuration=phpunit.mysql.xml --compact`: 194 test, 1.737 assertion lulus.
 
 ### SQLite
 
-PASS — `php artisan test --compact`: 178 test, 1.683 assertion lulus.
+PASS — `php artisan test --compact`: 194 test, 1.737 assertion lulus.
 
 ### TypeScript
 
@@ -230,7 +269,7 @@ PASS — `npm run types:check` lulus saat dijalankan berurutan dengan heap Node 
 
 ### Build
 
-PASS — `npm run build` lulus; 3.317 modul ditransform dan Wayfinder actions/routes/form variants diregenerasi.
+PASS — `npm run build` lulus; 3.316 modul ditransform dan Wayfinder actions/routes/form variants diregenerasi.
 
 ### PHPStan
 
@@ -246,7 +285,7 @@ PASS — tidak ada whitespace error pada diff Phase 19.
 
 ### npm run check
 
-PRE-EXISTING — gagal pada 18 file format yang tidak berada dalam diff Phase 19, termasuk handoff lama dan beberapa page React. Tidak menjalankan `vp check --fix` agar tidak memformat massal file di luar scope.
+PRE-EXISTING — gagal pada 21 file format yang berada di luar diff Unified BAP. File Unified BAP yang disentuh telah diformat secara scoped; tidak menjalankan `vp check --fix` agar tidak memformat massal file di luar scope.
 
 ## Findings
 
@@ -276,17 +315,21 @@ Tidak ada temuan kosmetik yang dapat diklaim dari browser.
 - Mengunci aksi detail BAP Petugas Loket setelah Verifikasi Tahap 1 dimulai dan menambahkan regression untuk visibilitas aksi serta penolakan mutasi direct HTTP.
 - Menormalisasi input numerik checklist verifikasi menjadi integer sebelum request agar nomeratur fisik browser tidak gagal pada validasi backend.
 - Menambahkan nomor dokumen BAP permanen berformat `PB/<KODE_LOKET>/<DD>/<MM>/<YYYY>`, melakukan backfill BAP existing, dan mengganti referensi `#ID` pada seluruh lifecycle BAP.
+- Menyatukan input BAP Pemakaian dan BAP Batal/Rusak dalam satu form draft BAP dengan child cancellation atomic, count/detail invariant, alasan baru, dan audit create/update/remove.
+- Mengubah BAP Batal/Rusak standalone menjadi riwayat read-only serta meregenerasi Wayfinder setelah route mutation dihapus.
 
 ## Known Issues
 
 - Validasi browser manual, responsif, light/dark, dialog, dropdown, print, dan PDF visual belum tersedia pada environment ini.
-- `npm run check` melaporkan 18 isu format pre-existing di luar diff Phase 19.
-- CLI wrapper pada MySQL suite mengembalikan exit code non-zero meskipun JSON result runner adalah `passed`; test dijalankan tunggal, bukan paralel.
+- `npm run check` melaporkan 21 isu format pre-existing di luar diff Unified BAP.
+- Pint global `--test` masih menandai `app/Providers/AppServiceProvider.php` dan format legacy `routes/web.php`; file PHP Unified BAP telah diformat scoped.
+- Browser automation dan browser print/PDF visual belum tersedia untuk membuktikan dynamic cancellation row pada perangkat nyata.
 
 ## Technical Debt
 
 - Sediakan browser automation atau sesi browser yang dapat dikendalikan untuk menyelesaikan checklist visual/mobile/print secara nyata.
 - Rekonsiliasi master Loket development sebelum menggunakan `DatabaseSeeder` global pada database yang telah dikurasi.
+- Hapus controller/page orphan legacy cancellation setelah compatibility bundle lama tidak lagi diperlukan; route write sudah tidak tersedia.
 
 ## Open Questions
 

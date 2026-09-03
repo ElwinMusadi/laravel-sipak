@@ -69,7 +69,6 @@ class SkpdBapCancellationController extends Controller
                 ->withQueryString()
                 ->through(fn (BapCancellation $cancellation): array => $this->cancellationListData($cancellation)),
             'filters' => $filters,
-            'can' => ['create' => $actor->can('create-bap-cancellations')],
         ]);
     }
 
@@ -175,7 +174,7 @@ class SkpdBapCancellationController extends Controller
                 'id' => $bapCancellation->id,
                 'numerator' => $bapCancellation->numerator,
                 'reason' => $bapCancellation->reason->value,
-                'reason_label' => $this->reasonLabel($bapCancellation->reason),
+                'reason_label' => $bapCancellation->reason->label(),
                 'description' => $bapCancellation->description,
                 'created_by' => $bapCancellation->creator->name,
                 'created_at' => $bapCancellation->created_at->toIso8601String(),
@@ -217,7 +216,7 @@ class SkpdBapCancellationController extends Controller
             'loket' => $cancellation->bap->loket->name,
             'numerator' => $cancellation->numerator,
             'reason' => $cancellation->reason->value,
-            'reason_label' => $this->reasonLabel($cancellation->reason),
+            'reason_label' => $cancellation->reason->label(),
             'description' => $cancellation->description,
             'created_by' => $cancellation->creator->name,
             'bap_status' => $cancellation->bap->status->value,
@@ -232,16 +231,8 @@ class SkpdBapCancellationController extends Controller
     {
         return array_map(fn (BapCancellationReason $reason): array => [
             'value' => $reason->value,
-            'label' => $this->reasonLabel($reason),
+            'label' => $reason->label(),
         ], BapCancellationReason::cases());
-    }
-
-    private function reasonLabel(BapCancellationReason $reason): string
-    {
-        return match ($reason) {
-            BapCancellationReason::Cancelled => 'Batal',
-            BapCancellationReason::Damaged => 'Rusak',
-        };
     }
 
     private function actor(Request $request): User

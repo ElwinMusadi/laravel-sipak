@@ -181,7 +181,6 @@ test('BAP detail hides Loket actions and rejects direct mutations after Phase 1 
             ->where('bap.can.edit', false)
             ->where('bap.can.submit', false)
             ->where('bap.can.delete', false)
-            ->where('bap.can.create_cancellation', false)
             ->etc(),
         );
 
@@ -191,6 +190,7 @@ test('BAP detail hides Loket actions and rejects direct mutations after Phase 1 
             'numerator_start' => '0582608',
             'numerator_end' => '0582620',
             'online_usage_count' => 5,
+            'cancellation_count' => 0,
         ])
         ->assertForbidden();
 
@@ -203,9 +203,15 @@ test('BAP detail hides Loket actions and rejects direct mutations after Phase 1 
         ->assertForbidden();
 
     $this->actingAs($petugas)
-        ->post(route('baps.cancellations.store', $bap), [
-            'numerator' => '0582612',
-            'reason' => BapCancellationReason::Damaged->value,
+        ->put(route('baps.update', $bap), [
+            'service_date' => now()->toDateString(),
+            'numerator_start' => '0582608',
+            'numerator_end' => '0582620',
+            'online_usage_count' => 5,
+            'cancellation_count' => 1,
+            'cancellations' => [
+                ['numerator' => '0582612', 'reason' => BapCancellationReason::PrinterError->value, 'description' => ''],
+            ],
         ])
         ->assertForbidden();
 });

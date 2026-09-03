@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Plus, Search, X } from 'lucide-react';
+import { Eye, Search, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import {
     BapStatusBadge,
@@ -33,7 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { create, index, show } from '@/routes/bap-cancellations';
+import { index, show } from '@/routes/bap-cancellations';
 
 type CancellationReason = 'cancelled' | 'damaged';
 
@@ -61,13 +61,11 @@ type Props = {
         total: number;
     };
     filters: { search?: string; reason?: CancellationReason };
-    can: { create: boolean };
 };
 
 export default function BapCancellationIndex({
     cancellations,
     filters,
-    can,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [reason, setReason] = useState<CancellationReason | ''>(
@@ -105,14 +103,6 @@ export default function BapCancellationIndex({
                             diklasifikasikan sebagai batal atau rusak.
                         </p>
                     </div>
-                    {can.create ? (
-                        <Button asChild>
-                            <Link href={create()}>
-                                <Plus data-icon="inline-start" />
-                                Catat batal/rusak
-                            </Link>
-                        </Button>
-                    ) : null}
                 </div>
 
                 <Card>
@@ -211,7 +201,9 @@ export default function BapCancellationIndex({
                                             (cancellation) => (
                                                 <TableRow key={cancellation.id}>
                                                     <TableCell className="font-medium whitespace-nowrap">
-                                                        {cancellation.bap_document_number}
+                                                        {
+                                                            cancellation.bap_document_number
+                                                        }
                                                     </TableCell>
                                                     <TableCell className="whitespace-nowrap">
                                                         {formatDate(

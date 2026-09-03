@@ -3,6 +3,8 @@ import { BapForm } from '@/components/bap/bap-form';
 import Heading from '@/components/heading';
 import { create, index } from '@/routes/baps';
 
+type CancellationReason = { value: string; label: string };
+
 type Props = {
     loket: { id: number; name: string } | null;
     lokets: { id: number; name: string }[];
@@ -14,6 +16,7 @@ type Props = {
         numerator_end: number;
         remaining_quantity: number;
     }[];
+    cancellation_reasons: CancellationReason[];
 };
 
 export default function CreateBap({
@@ -22,6 +25,7 @@ export default function CreateBap({
     default_service_date,
     expected_numerator_start,
     allocations,
+    cancellation_reasons,
 }: Props) {
     return (
         <>
@@ -40,6 +44,7 @@ export default function CreateBap({
                     defaultServiceDate={default_service_date}
                     expectedNumeratorStart={expected_numerator_start}
                     allocations={allocations}
+                    cancellationReasons={cancellation_reasons}
                 />
             </main>
         </>

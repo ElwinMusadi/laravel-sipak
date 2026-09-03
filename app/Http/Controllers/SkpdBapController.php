@@ -12,6 +12,7 @@ use App\BapStatus;
 use App\Http\Requests\SkpdInventory\StoreBapRequest;
 use App\Http\Requests\SkpdInventory\UpdateBapRequest;
 use App\Models\Bap;
+use App\Models\BapCancellation;
 use App\Models\Loket;
 use App\Models\SkpdAllocation;
 use App\Models\User;
@@ -116,6 +117,10 @@ class SkpdBapController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'cancellation_reasons' => array_map(
+                fn (BapCancellationReason $r): array => ['value' => $r->value, 'label' => $r->label()],
+                BapCancellationReason::forNewEntry(),
+            ),
         ]);
     }
 
@@ -133,6 +138,8 @@ class SkpdBapController extends Controller
             (int) $attributes['numerator_start'],
             (int) $attributes['numerator_end'],
             (int) $attributes['online_usage_count'],
+            (int) ($attributes['cancellation_count'] ?? 0),
+            $this->parseCancellationItems($attributes['cancellations'] ?? []),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP SKPD berhasil disimpan.']);
@@ -196,10 +203,7 @@ class SkpdBapController extends Controller
                             'id' => $cancellation->id,
                             'numerator' => $cancellation->numerator,
                             'reason' => $cancellation->reason->value,
-                            'reason_label' => match ($cancellation->reason) {
-                                BapCancellationReason::Cancelled => 'Batal',
-                                BapCancellationReason::Damaged => 'Rusak',
-                            },
+                            'reason_label' => $cancellation->reason->label(),
                             'description' => $cancellation->description,
                             'created_by' => $cancellation->creator->name,
                             'created_at' => $cancellation->created_at->toIso8601String(),
@@ -252,10 +256,14 @@ class SkpdBapController extends Controller
 
         Gate::authorize('update-bap', $bap);
 
-        $bap->load('loket:id,name');
+        $bap->load(['loket:id,name', 'cancellations' => fn ($q) => $q->orderBy('numerator')]);
 
         return Inertia::render('baps/edit', [
             'bap' => $this->bapFormData($bap),
+            'cancellation_reasons' => array_map(
+                fn (BapCancellationReason $r): array => ['value' => $r->value, 'label' => $r->label()],
+                BapCancellationReason::forNewEntry(),
+            ),
         ]);
     }
 
@@ -272,6 +280,8 @@ class SkpdBapController extends Controller
             (int) $attributes['numerator_start'],
             (int) $attributes['numerator_end'],
             (int) $attributes['online_usage_count'],
+            (int) ($attributes['cancellation_count'] ?? 0),
+            $this->parseCancellationItems($attributes['cancellations'] ?? []),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft BAP SKPD berhasil diperbarui.']);
@@ -308,7 +318,7 @@ class SkpdBapController extends Controller
     }
 
     /**
-     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, creator_role: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool, create_cancellation: bool}}
+     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, creator_role: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool}}
      */
     private function bapData(User $actor, Bap $bap): array
     {
@@ -337,14 +347,12 @@ class SkpdBapController extends Controller
                     && (int) $bap->cancellations_count === 0
                     && (int) $bap->verifications_count === 0
                     && (int) $bap->clarification_requests_count === 0,
-                'create_cancellation' => $bap->status === BapStatus::Draft
-                    && $actor->can('create-bap-cancellation', $bap),
             ],
         ];
     }
 
     /**
-     * @return array{id: int, service_date: string, numerator_start: int, numerator_end: int, online_usage_count: int, loket: array{id: int, name: string}}
+     * @return array{id: int, document_number: string, service_date: string, numerator_start: int, numerator_end: int, online_usage_count: int, loket: array{id: int, name: string}, cancellation_count: int, cancellations: list<array{numerator: int, reason: string, description: string|null}>}
      */
     private function bapFormData(Bap $bap): array
     {
@@ -356,6 +364,14 @@ class SkpdBapController extends Controller
             'numerator_end' => $bap->numerator_end,
             'online_usage_count' => $bap->online_usage_count,
             'loket' => ['id' => $bap->loket->id, 'name' => $bap->loket->name],
+            'cancellation_count' => $bap->cancellations->count(),
+            'cancellations' => array_values($bap->cancellations
+                ->map(fn (BapCancellation $cancellation): array => [
+                    'numerator' => $cancellation->numerator,
+                    'reason' => $cancellation->reason->value,
+                    'description' => $cancellation->description,
+                ])
+                ->all()),
         ];
     }
 
@@ -389,6 +405,8 @@ class SkpdBapController extends Controller
             'bap_usage_segments.created' => 'Usage segment BAP dicatat',
             'bap_usage_segments.updated' => 'Usage segment BAP diperbarui',
             'bap_cancellation.recorded' => 'Nomeratur batal/rusak dicatat',
+            'bap_cancellation.updated' => 'Nomeratur batal/rusak diperbarui',
+            'bap_cancellation.removed' => 'Nomeratur batal/rusak dihapus dari draft',
             default => 'Perubahan BAP',
         };
     }
@@ -410,6 +428,23 @@ class SkpdBapController extends Controller
         abort_unless($actor instanceof User, 403);
 
         return $actor;
+    }
+
+    /**
+     * Parse raw validated cancellation array into typed items for domain actions.
+     *
+     * @param  array<int, array<string, mixed>>  $raw
+     * @return list<array{numerator: int, reason: BapCancellationReason, description: string|null}>
+     */
+    private function parseCancellationItems(array $raw): array
+    {
+        return array_values(array_map(fn (array $item): array => [
+            'numerator' => (int) $item['numerator'],
+            'reason' => BapCancellationReason::from((string) $item['reason']),
+            'description' => isset($item['description']) && filled($item['description'])
+                ? (string) $item['description']
+                : null,
+        ], $raw));
     }
 
     private function actorLoket(User $actor): Loket

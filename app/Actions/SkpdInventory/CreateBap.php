@@ -2,6 +2,7 @@
 
 namespace App\Actions\SkpdInventory;
 
+use App\BapCancellationReason;
 use App\BapStatus;
 use App\Models\Bap;
 use App\Models\BapUsageSegment;
@@ -19,8 +20,12 @@ class CreateBap
     public function __construct(
         private readonly RecordDomainAudit $audit,
         private readonly GenerateBapDocumentNumber $generateDocumentNumber,
+        private readonly SynchronizeBapCancellations $syncCancellations,
     ) {}
 
+    /**
+     * @param  list<array{numerator: int, reason: BapCancellationReason, description: string|null}>  $cancellations
+     */
     public function handle(
         User $actor,
         Loket $loket,
@@ -28,6 +33,8 @@ class CreateBap
         int $numeratorStart,
         int $numeratorEnd,
         int $onlineUsageCount = 0,
+        int $cancellationCount = 0,
+        array $cancellations = [],
     ): Bap {
         $this->validateRange($numeratorStart, $numeratorEnd);
 
@@ -45,7 +52,7 @@ class CreateBap
             ]);
         }
 
-        return DB::transaction(function () use ($actor, $loket, $serviceDate, $numeratorStart, $numeratorEnd, $onlineUsageCount, $totalUsage): Bap {
+        return DB::transaction(function () use ($actor, $loket, $serviceDate, $numeratorStart, $numeratorEnd, $onlineUsageCount, $totalUsage, $cancellationCount, $cancellations): Bap {
             $this->lockInventory();
             $lockedLoket = Loket::query()->lockForUpdate()->findOrFail($loket->id);
 
@@ -153,6 +160,8 @@ class CreateBap
                 'online_usage_count' => $bap->online_usage_count,
                 'status' => $bap->status->value,
             ]);
+
+            $this->syncCancellations->handle($actor, $bap, $cancellationCount, $cancellations);
 
             return $bap;
         }, attempts: 3);

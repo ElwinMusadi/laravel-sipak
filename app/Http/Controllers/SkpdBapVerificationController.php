@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\SkpdVerification\CompleteBapVerification;
 use App\Actions\SkpdVerification\StartBapVerification;
-use App\BapCancellationReason;
 use App\BapVerificationChecklistType;
 use App\BapVerificationResult;
 use App\BapVerificationStage;
@@ -195,10 +194,7 @@ class SkpdBapVerificationController extends Controller
                         'id' => $cancellation->id,
                         'numerator' => $cancellation->numerator,
                         'reason' => $cancellation->reason->value,
-                        'reason_label' => match ($cancellation->reason) {
-                            BapCancellationReason::Cancelled => 'Batal',
-                            BapCancellationReason::Damaged => 'Rusak',
-                        },
+                        'reason_label' => $cancellation->reason->label(),
                         'description' => $cancellation->description,
                         'created_by' => $cancellation->creator->name,
                     ])

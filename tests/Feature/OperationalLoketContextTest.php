@@ -12,7 +12,7 @@ use App\UserRole;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
- * @return array{service_date: string, numerator_start: string, numerator_end: string, online_usage_count: int}
+ * @return array{service_date: string, numerator_start: string, numerator_end: string, online_usage_count: int, cancellation_count: int}
  */
 function operationalContextBapPayload(
     int $numeratorStart,
@@ -24,6 +24,7 @@ function operationalContextBapPayload(
         'numerator_start' => str_pad((string) $numeratorStart, 7, '0', STR_PAD_LEFT),
         'numerator_end' => str_pad((string) $numeratorEnd, 7, '0', STR_PAD_LEFT),
         'online_usage_count' => $onlineUsageCount,
+        'cancellation_count' => 0,
     ];
 }
 

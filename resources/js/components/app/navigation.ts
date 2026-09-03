@@ -10,7 +10,6 @@ import {
     CircleX,
     ClipboardCheck,
     FileText,
-    FileWarning,
     Hash,
     LayoutDashboard,
     MessagesSquare,
@@ -83,13 +82,6 @@ export const applicationNavigation: readonly ApplicationNavigationGroup[] = [
                 href: bapsIndex(),
                 availability: 'available',
                 requiredPermission: 'viewBaps',
-            },
-            {
-                title: 'BAP Batal/Rusak',
-                icon: FileWarning,
-                href: bapCancellationsIndex(),
-                availability: 'available',
-                requiredPermission: 'viewBapCancellations',
             },
             {
                 title: 'Klarifikasi',
