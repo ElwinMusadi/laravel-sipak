@@ -327,13 +327,17 @@ class SkpdBapController extends Controller
             'created_at' => $bap->created_at->toIso8601String(),
             'submitted_at' => $bap->submitted_at?->toIso8601String(),
             'can' => [
-                'edit' => $actor->can('update-bap', $bap),
-                'submit' => $actor->can('submit-bap', $bap),
-                'delete' => $actor->can('delete-bap', $bap)
+                'edit' => $bap->status === BapStatus::Draft
+                    && $actor->can('update-bap', $bap),
+                'submit' => $bap->status === BapStatus::Draft
+                    && $actor->can('submit-bap', $bap),
+                'delete' => $bap->status === BapStatus::Draft
+                    && $actor->can('delete-bap', $bap)
                     && (int) $bap->cancellations_count === 0
                     && (int) $bap->verifications_count === 0
                     && (int) $bap->clarification_requests_count === 0,
-                'create_cancellation' => $actor->can('create-bap-cancellation', $bap),
+                'create_cancellation' => $bap->status === BapStatus::Draft
+                    && $actor->can('create-bap-cancellation', $bap),
             ],
         ];
     }

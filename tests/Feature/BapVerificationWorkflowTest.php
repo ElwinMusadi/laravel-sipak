@@ -165,6 +165,51 @@ test('Petugas Penetapan can start a submitted BAP verification with an audit tra
     ]);
 });
 
+test('BAP detail hides Loket actions and rejects direct mutations after Phase 1 starts', function () {
+    $verifier = phaseEightVerifier();
+    $bap = phaseEightSubmittedBap();
+    $petugas = User::query()->findOrFail($bap->created_by);
+
+    phaseEightStartVerification($verifier, $bap);
+
+    $this->actingAs($petugas)
+        ->get(route('baps.show', $bap))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('baps/show')
+            ->where('bap.status', BapStatus::UnderVerification->value)
+            ->where('bap.can.edit', false)
+            ->where('bap.can.submit', false)
+            ->where('bap.can.delete', false)
+            ->where('bap.can.create_cancellation', false)
+            ->etc(),
+        );
+
+    $this->actingAs($petugas)
+        ->put(route('baps.update', $bap), [
+            'service_date' => now()->toDateString(),
+            'numerator_start' => '0582608',
+            'numerator_end' => '0582620',
+            'online_usage_count' => 5,
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($petugas)
+        ->post(route('baps.submit', $bap))
+        ->assertForbidden();
+
+    $this->actingAs($petugas)
+        ->delete(route('baps.destroy', $bap))
+        ->assertForbidden();
+
+    $this->actingAs($petugas)
+        ->post(route('baps.cancellations.store', $bap), [
+            'numerator' => '0582612',
+            'reason' => BapCancellationReason::Damaged->value,
+        ])
+        ->assertForbidden();
+});
+
 test('Petugas Penetapan can view BAP source data, segments, and cancellation numbers before completing verification', function () {
     $verifier = phaseEightVerifier();
     $bap = phaseEightSubmittedBap();

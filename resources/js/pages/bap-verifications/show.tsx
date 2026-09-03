@@ -198,6 +198,14 @@ export default function ShowBapVerification({
   const submit = (): void => {
     form.transform((data) => ({
       ...data,
+      checklist: data.checklist.map((item) => ({
+        ...item,
+        actual_quantity: parsePhysicalNumber(item.actual_quantity),
+        actual_numerator_start: parsePhysicalNumber(
+          item.actual_numerator_start,
+        ),
+        actual_numerator_end: parsePhysicalNumber(item.actual_numerator_end),
+      })),
       discrepancies: mismatches.map((mismatch) => ({
         type: mismatch.type,
         notes: discrepancyNotes[mismatch.type] ?? "",

@@ -1,6 +1,6 @@
 # SIPAK — STATUS PROYEK
 
-**Pembaruan terakhir:** 2 September 2026
+**Pembaruan terakhir:** 3 September 2026
 **Fase saat ini:** Phase 19 — Manual Testing Readiness & End-to-End Workflow Hardening
 **Status:** PARTIAL — regresi otomatis siap; validasi browser manual belum dapat dinyatakan lulus.
 
@@ -123,7 +123,7 @@ Workflow pending → accept, range di dalam Box, satu Box satu Loket, overlap, h
 
 ## BAP Pemakaian
 
-Draft, update, submit, numerator berurutan, total derived, online tidak melebihi total, range allocation valid, dan satu BAP per Loket/hari tercakup oleh suite. Range awal siap dipakai untuk uji manual: MPP `0582001`, SAMSAT Kantor `0584001`.
+Draft, update, submit, numerator berurutan, total derived, online tidak melebihi total, range allocation valid, dan satu BAP per Loket/hari tercakup oleh suite. Setelah Verifikasi Tahap 1 dimulai (`under_verification`), halaman detail tidak lagi menyediakan aksi ubah draft, ajukan ulang, hapus, atau catat batal/rusak bagi Petugas Loket; direct HTTP untuk seluruh mutasi tersebut tetap ditolak. Range awal siap dipakai untuk uji manual: MPP `0582001`, SAMSAT Kantor `0584001`.
 
 ## BAP Batal/Rusak
 
@@ -131,7 +131,7 @@ Regression memvalidasi Batal/Rusak berada dalam range BAP, tidak duplikat, tidak
 
 ## Verifikasi Tahap 1
 
-Regression memvalidasi transition `submitted → under_verification → needs_clarification` atau `waiting_verification_phase_2`, termasuk lima checklist dan authorization Petugas Penetapan.
+Regression memvalidasi transition `submitted → under_verification → needs_clarification` atau `waiting_verification_phase_2`, termasuk lima checklist dan authorization Petugas Penetapan. Input angka checklist dari browser dinormalisasi menjadi integer sebelum dikirim, sehingga nomeratur fisik dengan leading zero dapat menyelesaikan verifikasi tanpa gagal validasi tipe.
 
 ## Verifikasi Tahap 2
 
@@ -273,6 +273,8 @@ Tidak ada temuan kosmetik yang dapat diklaim dari browser.
 - Mengubah `DevelopmentUserSeeder` agar tidak menimpa credential, role, assignment, atau data Loket existing.
 - Menambahkan regression test untuk fixture dan preservation data existing.
 - Menambahkan regression test matrix permission implementasi delapan role.
+- Mengunci aksi detail BAP Petugas Loket setelah Verifikasi Tahap 1 dimulai dan menambahkan regression untuk visibilitas aksi serta penolakan mutasi direct HTTP.
+- Menormalisasi input numerik checklist verifikasi menjadi integer sebelum request agar nomeratur fisik browser tidak gagal pada validasi backend.
 
 ## Known Issues
 
