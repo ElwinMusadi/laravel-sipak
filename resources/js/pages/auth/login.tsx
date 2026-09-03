@@ -7,9 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlaceholderPattern } from "@/components/ui/placeholder-pattern";
 import { Spinner } from "@/components/ui/spinner";
 import { store } from "@/routes/login";
+import skpdLq310Image from "../../../../blueprint/SKPD-LQ310.jpeg";
 
 type Props = {
   status?: string;
@@ -97,8 +97,12 @@ export default function Login({ status }: Props) {
                 )}
               </Form>
 
-              <div className="bg-muted relative hidden md:block">
-                <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+              <div className="bg-muted relative hidden overflow-hidden md:block">
+                <img
+                  src={skpdLq310Image}
+                  alt="Dokumen Surat Ketetapan Pajak Daerah"
+                  className="size-full object-cover"
+                />
               </div>
             </CardContent>
           </Card>
