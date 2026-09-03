@@ -259,7 +259,7 @@ export function BapForm({
 
                 <div className="grid gap-2">
                   <Label htmlFor="online_usage_count">
-                    SKPD pembayaran online
+                    SKPD Pembayaran Online
                   </Label>
                   <Input
                     id="online_usage_count"
@@ -312,10 +312,7 @@ export function BapForm({
             <CardTitle>Review pemakaian</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm">
-            <ReviewRow
-              label="Loket Pelayanan"
-              value={formLoket?.name ?? "—"}
-            />
+            <ReviewRow label="Loket Pelayanan" value={formLoket?.name ?? "—"} />
             <ReviewRow
               label="Tanggal"
               value={
