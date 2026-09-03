@@ -38,6 +38,7 @@ import { show as showClarification } from "@/routes/bap-clarifications";
 type Props = {
   bap: {
     id: number;
+    document_number: string;
     service_date: string;
     loket: { id: number; name: string };
     numerator_start: number;
@@ -105,7 +106,7 @@ type Props = {
 export default function ShowBap({ bap }: Props) {
   return (
     <>
-      <Head title={`BAP SKPD #${bap.id}`} />
+      <Head title={bap.document_number} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -123,7 +124,7 @@ export default function ShowBap({ bap }: Props) {
             </Button>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">
-                BAP SKPD #{bap.id}
+                {bap.document_number}
               </h1>
               <BapStatusBadge status={bap.status} />
             </div>
@@ -171,7 +172,7 @@ export default function ShowBap({ bap }: Props) {
               <CardTitle>Informasi BAP</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
-              <DetailRow label="ID BAP" value={`#${bap.id}`} />
+              <DetailRow label="Nomor dokumen" value={bap.document_number} />
               <DetailRow
                 label="Status"
                 value={<BapStatusBadge status={bap.status} />}

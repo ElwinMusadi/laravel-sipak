@@ -23,6 +23,7 @@ export type DashboardWorkItem = {
 
 export type RecentBap = {
     id: number;
+    documentNumber: string;
     loket: string;
     serviceDate: string;
     submittedAt: string | null;

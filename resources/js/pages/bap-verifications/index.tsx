@@ -28,6 +28,7 @@ import * as phaseTwoRoutes from "@/routes/bap-verifications-phase-2";
 
 type QueueBap = {
   id: number;
+  document_number: string;
   service_date: string;
   loket: string;
   numerator_start: number;
@@ -141,8 +142,8 @@ export default function BapVerificationIndex({
                   <TableBody>
                     {baps.data.map((bap) => (
                       <TableRow key={bap.id}>
-                        <TableCell className="font-medium tabular-nums">
-                          #{bap.id}
+                        <TableCell className="font-medium whitespace-nowrap">
+                          {bap.document_number}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(bap.service_date)}
@@ -222,7 +223,7 @@ export default function BapVerificationIndex({
                             <Button variant="ghost" size="icon" asChild>
                               <Link
                                 href={routes.show(bap.id)}
-                                aria-label={`Detail verifikasi BAP #${bap.id}`}
+                                aria-label={`Detail verifikasi BAP ${bap.document_number}`}
                               >
                                 {startStatuses.includes(bap.status) ? (
                                   <ArrowRight />

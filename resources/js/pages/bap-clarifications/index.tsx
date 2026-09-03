@@ -20,6 +20,7 @@ import { index, open, show } from "@/routes/bap-clarifications";
 type Clarification = {
   id: number;
   bap_id: number;
+  bap_document_number: string;
   service_date: string;
   loket: string;
   stage: "phase_1" | "phase_2";
@@ -99,8 +100,8 @@ export default function BapClarificationIndex({
                   <TableBody>
                     {clarifications.data.map((clarification) => (
                       <TableRow key={clarification.id}>
-                        <TableCell className="font-medium tabular-nums">
-                          #{clarification.bap_id}
+                        <TableCell className="font-medium whitespace-nowrap">
+                          {clarification.bap_document_number}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(clarification.service_date)}

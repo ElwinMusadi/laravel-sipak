@@ -36,6 +36,7 @@ import {
 
 type Bap = {
   id: number;
+  document_number: string;
   service_date: string;
   loket: { id: number; name: string };
   numerator_start: number;
@@ -189,7 +190,6 @@ export default function BapIndex({ baps, filters, can }: Props) {
                 <Table className="min-w-272">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID BAP</TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Loket</TableHead>
                       <TableHead>Nomeratur</TableHead>
@@ -204,9 +204,6 @@ export default function BapIndex({ baps, filters, can }: Props) {
                   <TableBody>
                     {baps.data.map((bap) => (
                       <TableRow key={bap.id}>
-                        <TableCell className="font-medium tabular-nums">
-                          #{bap.id}
-                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(bap.service_date)}
                         </TableCell>
@@ -235,7 +232,7 @@ export default function BapIndex({ baps, filters, can }: Props) {
                               <Button variant="ghost" size="icon" asChild>
                                 <Link
                                   href={edit(bap.id)}
-                                  aria-label={`Ubah draft BAP #${bap.id}`}
+                                  aria-label={`Ubah draft BAP ${bap.document_number}`}
                                 >
                                   <Pencil />
                                 </Link>
@@ -244,7 +241,7 @@ export default function BapIndex({ baps, filters, can }: Props) {
                             <Button variant="ghost" size="icon" asChild>
                               <Link
                                 href={show(bap.id)}
-                                aria-label={`Detail BAP #${bap.id}`}
+                                aria-label={`Detail BAP ${bap.document_number}`}
                               >
                                 <Eye />
                               </Link>

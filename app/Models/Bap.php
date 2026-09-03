@@ -15,6 +15,7 @@ use LogicException;
 
 /**
  * @property int $id
+ * @property string $document_number
  * @property int $loket_id
  * @property CarbonInterface $service_date
  * @property int $numerator_start
@@ -28,7 +29,7 @@ use LogicException;
  * @property CarbonInterface|null $received_at
  * @property string|null $receipt_notes
  */
-#[Fillable(['loket_id', 'service_date', 'numerator_start', 'numerator_end', 'total_usage', 'online_usage_count', 'status', 'created_by', 'submitted_at', 'received_by', 'received_at', 'receipt_notes'])]
+#[Fillable(['document_number', 'loket_id', 'service_date', 'numerator_start', 'numerator_end', 'total_usage', 'online_usage_count', 'status', 'created_by', 'submitted_at', 'received_by', 'received_at', 'receipt_notes'])]
 class Bap extends Model
 {
     /** @use HasFactory<BapFactory> */

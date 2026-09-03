@@ -32,7 +32,7 @@ class SkpdBapClarificationController extends Controller
 
         $clarifications = BapClarificationRequest::query()
             ->with([
-                'bap:id,loket_id,service_date,status',
+                'bap:id,document_number,loket_id,service_date,status',
                 'bap.loket:id,name',
                 'verification:id,stage',
                 'verification.discrepancies:id,bap_verification_id,type,expected_value,actual_value,difference,notes',
@@ -72,7 +72,7 @@ class SkpdBapClarificationController extends Controller
         $actor = $this->actor($request);
 
         $clarification->load([
-            'bap:id,loket_id,service_date,status,numerator_start,numerator_end,total_usage,online_usage_count',
+            'bap:id,document_number,loket_id,service_date,status,numerator_start,numerator_end,total_usage,online_usage_count',
             'bap.loket:id,name',
             'verification:id,bap_id,verifier_id,stage,attempt,started_at,completed_at,result',
             'verification.verifier:id,name',
@@ -164,6 +164,7 @@ class SkpdBapClarificationController extends Controller
         return [
             'id' => $clarification->id,
             'bap_id' => $clarification->bap_id,
+            'bap_document_number' => $clarification->bap->document_number,
             'service_date' => $clarification->bap->service_date->toDateString(),
             'loket' => $clarification->bap->loket->name,
             'stage' => $clarification->verification->stage->value,
@@ -231,6 +232,7 @@ class SkpdBapClarificationController extends Controller
             ],
             'bap' => [
                 'id' => $clarification->bap_id,
+                'document_number' => $clarification->bap->document_number,
                 'loket' => $clarification->bap->loket->name,
                 'service_date' => $clarification->bap->service_date->toDateString(),
                 'status' => $clarification->bap->status->value,

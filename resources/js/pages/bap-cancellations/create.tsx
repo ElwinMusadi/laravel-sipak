@@ -30,6 +30,7 @@ type Reason = { value: "cancelled" | "damaged"; label: string };
 type Props = {
   bap: {
     id: number;
+    document_number: string;
     service_date: string;
     loket: { id: number; name: string };
     numerator_start: number;
@@ -54,7 +55,7 @@ export default function CreateBapCancellation({ bap, reasons }: Props) {
 
   return (
     <>
-      <Head title={`Catat batal/rusak BAP #${bap.id}`} />
+      <Head title={`Catat batal/rusak ${bap.document_number}`} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
         <div className="grid gap-2">
@@ -96,7 +97,7 @@ export default function CreateBapCancellation({ bap, reasons }: Props) {
                       <div className="grid gap-2">
                         <Label>BAP SKPD</Label>
                         <div className="bg-muted rounded-xl px-3 py-2.5 text-sm font-medium">
-                          BAP #{bap.id} · {bap.loket.name}
+                          {bap.document_number} · {bap.loket.name}
                         </div>
                         <p className="text-muted-foreground text-xs">
                           Tanggal pelayanan: {formatDate(bap.service_date)}
@@ -196,7 +197,7 @@ export default function CreateBapCancellation({ bap, reasons }: Props) {
                 <CardTitle>Review</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 text-sm">
-                <ReviewRow label="BAP" value={`#${bap.id}`} />
+                <ReviewRow label="BAP" value={bap.document_number} />
                 <ReviewRow
                   label="Nomeratur"
                   value={

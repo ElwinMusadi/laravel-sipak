@@ -17,6 +17,7 @@ import {
 type Props = {
     bap: {
         id: number;
+        document_number: string;
         loket: { name: string };
         numerator_start: number;
         numerator_end: number;
@@ -35,7 +36,7 @@ export function BapDeleteDialog({ bap }: Props) {
                 <DialogHeader>
                     <DialogTitle>Hapus draft BAP SKPD?</DialogTitle>
                     <DialogDescription>
-                        BAP #{bap.id} dari {bap.loket.name} dengan range{' '}
+                        {bap.document_number} dari {bap.loket.name} dengan range{' '}
                         {formatRange(bap.numerator_start, bap.numerator_end)}{' '}
                         akan dihapus. Tindakan ini hanya tersedia sebelum ada
                         pembatalan, verifikasi, atau klarifikasi.

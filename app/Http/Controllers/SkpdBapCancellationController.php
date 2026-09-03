@@ -99,6 +99,7 @@ class SkpdBapCancellationController extends Controller
                 ->get()
                 ->map(fn (Bap $bap): array => [
                     'id' => $bap->id,
+                    'document_number' => $bap->document_number,
                     'service_date' => $bap->service_date->toDateString(),
                     'loket' => $bap->loket->name,
                     'numerator_start' => $bap->numerator_start,
@@ -190,6 +191,7 @@ class SkpdBapCancellationController extends Controller
     {
         return [
             'id' => $bap->id,
+            'document_number' => $bap->document_number,
             'service_date' => $bap->service_date->toDateString(),
             'loket' => ['id' => $bap->loket->id, 'name' => $bap->loket->name],
             'numerator_start' => $bap->numerator_start,
@@ -210,6 +212,7 @@ class SkpdBapCancellationController extends Controller
         return [
             'id' => $cancellation->id,
             'bap_id' => $cancellation->bap->id,
+            'bap_document_number' => $cancellation->bap->document_number,
             'service_date' => $cancellation->bap->service_date->toDateString(),
             'loket' => $cancellation->bap->loket->name,
             'numerator' => $cancellation->numerator,

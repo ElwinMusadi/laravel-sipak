@@ -58,6 +58,7 @@ type Props = {
         };
         bap: {
             id: number;
+            document_number: string;
             loket: string;
             service_date: string;
             status: string;
@@ -146,7 +147,7 @@ export default function ShowBapClarification({ clarification, can }: Props) {
 
     return (
         <>
-            <Head title={`Klarifikasi BAP #${clarification.bap.id}`} />
+            <Head title={`Klarifikasi ${clarification.bap.document_number}`} />
 
             <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
                 <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -164,7 +165,7 @@ export default function ShowBapClarification({ clarification, can }: Props) {
                         </Button>
                         <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-semibold tracking-tight">
-                                Klarifikasi BAP #{clarification.bap.id}
+                                Klarifikasi {clarification.bap.document_number}
                             </h1>
                             <Badge variant="outline">
                                 {clarification.status_label}

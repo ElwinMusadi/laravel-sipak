@@ -113,6 +113,7 @@ class SkpdBapVerificationController extends Controller
 
                 return [
                     'id' => $bap->id,
+                    'document_number' => $bap->document_number,
                     'service_date' => $bap->service_date->toDateString(),
                     'loket' => $bap->loket->name,
                     'numerator_start' => $bap->numerator_start,
@@ -168,6 +169,7 @@ class SkpdBapVerificationController extends Controller
         return Inertia::render('bap-verifications/show', [
             'bap' => [
                 'id' => $bap->id,
+                'document_number' => $bap->document_number,
                 'service_date' => $bap->service_date->toDateString(),
                 'loket' => $bap->loket->name,
                 'created_by' => $bap->creator->name,

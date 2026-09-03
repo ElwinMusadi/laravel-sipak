@@ -18,6 +18,7 @@ import { create, index } from '@/routes/bap-cancellations';
 type Props = {
     baps: {
         id: number;
+        document_number: string;
         service_date: string;
         loket: string;
         numerator_start: number;
@@ -80,8 +81,8 @@ export default function CreateBapCancellationEntry({ baps }: Props) {
                                         <TableBody>
                                             {baps.map((bap) => (
                                                 <TableRow key={bap.id}>
-                                                    <TableCell className="font-medium tabular-nums">
-                                                        #{bap.id}
+                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                        {bap.document_number}
                                                     </TableCell>
                                                     <TableCell>
                                                         {formatDate(
@@ -128,7 +129,7 @@ export default function CreateBapCancellationEntry({ baps }: Props) {
                                         >
                                             <div className="flex justify-between gap-3">
                                                 <p className="font-medium">
-                                                    BAP #{bap.id}
+                                                    {bap.document_number}
                                                 </p>
                                                 <p className="text-muted-foreground text-sm">
                                                     {formatDate(

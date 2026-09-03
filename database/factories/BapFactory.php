@@ -24,6 +24,7 @@ class BapFactory extends Factory
         $numeratorEnd = $numeratorStart + 9;
 
         return [
+            'document_number' => 'PB/TEST/'.fake()->unique()->numerify('##/##/####'),
             'loket_id' => Loket::factory(),
             'service_date' => fake()->date(),
             'numerator_start' => $numeratorStart,

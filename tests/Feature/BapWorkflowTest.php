@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\SkpdInventory\GenerateBapDocumentNumber;
 use App\BapStatus;
 use App\Models\Bap;
 use App\Models\Loket;
@@ -109,6 +110,46 @@ test('petugas loket can create a BAP draft from their assigned Loket with derive
         'auditable_id' => $bap->id,
         'event' => 'bap_usage_segments.created',
     ]);
+});
+
+test('created BAP persists a document number from its Loket and creation date', function () {
+    $loket = Loket::factory()->create([
+        'code' => 'SAMLING-01',
+        'name' => 'SAMLING 01',
+    ]);
+    $petugas = bapPetugas($loket);
+    bapAllocation($petugas, $loket);
+
+    $this->travelTo('2026-09-03 10:15:00');
+
+    $this->actingAs($petugas)
+        ->post(route('baps.store'), bapPayload())
+        ->assertRedirect();
+
+    $bap = Bap::query()->sole();
+
+    expect($bap->document_number)->toBe('PB/SAMLING01/03/09/2026');
+    $this->assertDatabaseHas('audit_logs', [
+        'auditable_type' => Bap::class,
+        'auditable_id' => $bap->id,
+        'event' => 'bap.created',
+    ]);
+    expect($bap->auditLogs()->where('event', 'bap.created')->sole()->new_values)
+        ->toMatchArray(['document_number' => 'PB/SAMLING01/03/09/2026']);
+});
+
+test('document number uses fixed codes for Mall Pelayanan Publik and Loket utama', function () {
+    $generator = app(GenerateBapDocumentNumber::class);
+    $createdAt = now()->setDate(2026, 9, 3);
+
+    expect($generator->handle(Loket::factory()->make([
+        'code' => 'MPP',
+        'name' => 'Mall Pelayanan Publik',
+    ]), $createdAt))->toBe('PB/MPP/03/09/2026')
+        ->and($generator->handle(Loket::factory()->make([
+            'code' => 'SAMSAT-KANTOR',
+            'name' => 'SAMSAT Kantor',
+        ]), $createdAt))->toBe('PB/LOKET/03/09/2026');
 });
 
 test('store rejects a client supplied Loket, status, or total usage instead of trusting frontend fields', function () {

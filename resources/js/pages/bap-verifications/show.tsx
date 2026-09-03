@@ -86,6 +86,7 @@ type Verification = {
 type Props = {
   bap: {
     id: number;
+    document_number: string;
     service_date: string;
     loket: string;
     created_by: string;
@@ -218,7 +219,7 @@ export default function ShowBapVerification({
 
   return (
     <>
-      <Head title={`${stage.label} BAP #${bap.id}`} />
+      <Head title={`${stage.label} ${bap.document_number}`} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
         <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -236,7 +237,7 @@ export default function ShowBapVerification({
             </Button>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">
-                {stage.label} BAP #{bap.id}
+                {stage.label} {bap.document_number}
               </h1>
               <BapStatusBadge status={bap.status} />
             </div>

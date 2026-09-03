@@ -123,7 +123,7 @@ Workflow pending → accept, range di dalam Box, satu Box satu Loket, overlap, h
 
 ## BAP Pemakaian
 
-Draft, update, submit, numerator berurutan, total derived, online tidak melebihi total, range allocation valid, dan satu BAP per Loket/hari tercakup oleh suite. Setelah Verifikasi Tahap 1 dimulai (`under_verification`), halaman detail tidak lagi menyediakan aksi ubah draft, ajukan ulang, hapus, atau catat batal/rusak bagi Petugas Loket; direct HTTP untuk seluruh mutasi tersebut tetap ditolak. Range awal siap dipakai untuk uji manual: MPP `0582001`, SAMSAT Kantor `0584001`.
+Draft, update, submit, numerator berurutan, total derived, online tidak melebihi total, range allocation valid, dan satu BAP per Loket/hari tercakup oleh suite. Setiap BAP menyimpan nomor dokumen saat dibuat dengan format `PB/<KODE_LOKET>/<DD>/<MM>/<YYYY>` berdasarkan tanggal pembuatan: `MPP` untuk Mall Pelayanan Publik, `LOKET` untuk SAMSAT Kantor, dan nama Loket tanpa spasi dalam huruf kapital untuk Loket lain. Nomor dokumen dipakai sebagai referensi tampilan BAP, verifikasi, pembatalan, klarifikasi, receipt, Buku Kendali, laporan, dan kelak ekspor/print; primary key numerik tetap internal untuk relasi dan route. Setelah Verifikasi Tahap 1 dimulai (`under_verification`), halaman detail tidak lagi menyediakan aksi ubah draft, ajukan ulang, hapus, atau catat batal/rusak bagi Petugas Loket; direct HTTP untuk seluruh mutasi tersebut tetap ditolak. Range awal siap dipakai untuk uji manual: MPP `0582001`, SAMSAT Kantor `0584001`.
 
 ## BAP Batal/Rusak
 
@@ -275,6 +275,7 @@ Tidak ada temuan kosmetik yang dapat diklaim dari browser.
 - Menambahkan regression test matrix permission implementasi delapan role.
 - Mengunci aksi detail BAP Petugas Loket setelah Verifikasi Tahap 1 dimulai dan menambahkan regression untuk visibilitas aksi serta penolakan mutasi direct HTTP.
 - Menormalisasi input numerik checklist verifikasi menjadi integer sebelum request agar nomeratur fisik browser tidak gagal pada validasi backend.
+- Menambahkan nomor dokumen BAP permanen berformat `PB/<KODE_LOKET>/<DD>/<MM>/<YYYY>`, melakukan backfill BAP existing, dan mengganti referensi `#ID` pada seluruh lifecycle BAP.
 
 ## Known Issues
 

@@ -102,6 +102,7 @@ class DashboardController extends Controller
                     ->get()
                     ->map(fn (Bap $bap): array => [
                         'id' => $bap->id,
+                        'documentNumber' => $bap->document_number,
                         'loket' => $bap->loket->name,
                         'serviceDate' => $bap->service_date->toDateString(),
                         'submittedAt' => $bap->submitted_at?->toIso8601String(),
@@ -442,6 +443,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn (Bap $bap): array => [
                 'id' => $bap->id,
+                'documentNumber' => $bap->document_number,
                 'loket' => $bap->loket->name,
                 'serviceDate' => $bap->service_date->toDateString(),
                 'submittedAt' => $bap->submitted_at?->toIso8601String(),

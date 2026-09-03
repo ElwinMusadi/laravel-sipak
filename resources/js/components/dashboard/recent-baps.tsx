@@ -37,7 +37,7 @@ export function RecentBaps({ items }: { items: readonly RecentBap[] }) {
                     <Table className="min-w-155">
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="pl-6">ID BAP</TableHead>
+                                <TableHead className="pl-6">Nomor dokumen</TableHead>
                                 <TableHead>Loket</TableHead>
                                 <TableHead>Tanggal</TableHead>
                                 <TableHead>Waktu submit</TableHead>
@@ -49,8 +49,8 @@ export function RecentBaps({ items }: { items: readonly RecentBap[] }) {
                         <TableBody>
                             {items.map((item) => (
                                 <TableRow key={item.id}>
-                                    <TableCell className="pl-6 font-medium tabular-nums">
-                                        #{item.id}
+                                    <TableCell className="pl-6 font-medium whitespace-nowrap">
+                                        {item.documentNumber}
                                     </TableCell>
                                     <TableCell>{item.loket}</TableCell>
                                     <TableCell className="whitespace-nowrap">

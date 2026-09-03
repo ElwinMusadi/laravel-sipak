@@ -16,7 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class CreateBap
 {
-    public function __construct(private readonly RecordDomainAudit $audit) {}
+    public function __construct(
+        private readonly RecordDomainAudit $audit,
+        private readonly GenerateBapDocumentNumber $generateDocumentNumber,
+    ) {}
 
     public function handle(
         User $actor,
@@ -60,6 +63,7 @@ class CreateBap
                 ->get();
 
             $serviceDateString = $serviceDate->toDateString();
+            $documentNumber = $this->generateDocumentNumber->handle($lockedLoket, now());
 
             if ($existingBaps->contains(fn (Bap $bap): bool => $bap->service_date->toDateString() === $serviceDateString)) {
                 throw ValidationException::withMessages([
@@ -108,6 +112,7 @@ class CreateBap
             }
 
             $bap = Bap::create([
+                'document_number' => $documentNumber,
                 'loket_id' => $lockedLoket->id,
                 'service_date' => $serviceDateString,
                 'numerator_start' => $numeratorStart,
@@ -139,6 +144,7 @@ class CreateBap
             }
 
             $this->audit->handle($actor, $bap, 'bap.created', null, [
+                'document_number' => $bap->document_number,
                 'loket_id' => $bap->loket_id,
                 'service_date' => $bap->service_date->toDateString(),
                 'numerator_start' => $bap->numerator_start,

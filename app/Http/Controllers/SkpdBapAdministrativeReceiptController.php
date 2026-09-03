@@ -194,7 +194,7 @@ class SkpdBapAdministrativeReceiptController extends Controller
 
         return [
             'id' => $bap->id,
-            'number' => "#{$bap->id}",
+            'number' => $bap->document_number,
             'service_date' => $bap->service_date->toDateString(),
             'loket' => $bap->loket->name,
             'numerator_start' => $bap->numerator_start,
@@ -217,7 +217,7 @@ class SkpdBapAdministrativeReceiptController extends Controller
     {
         return [
             'id' => $bap->id,
-            'number' => "#{$bap->id}",
+            'number' => $bap->document_number,
             'service_date' => $bap->service_date->toDateString(),
             'loket' => $bap->loket->name,
             'created_by' => $bap->creator->name,

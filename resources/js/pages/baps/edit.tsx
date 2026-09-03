@@ -6,6 +6,7 @@ import { index } from '@/routes/baps';
 type Props = {
     bap: {
         id: number;
+        document_number: string;
         service_date: string;
         numerator_start: number;
         numerator_end: number;
@@ -17,11 +18,11 @@ type Props = {
 export default function EditBap({ bap }: Props) {
     return (
         <>
-            <Head title={`Ubah draft BAP #${bap.id}`} />
+            <Head title={`Ubah draft ${bap.document_number}`} />
 
             <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
                 <Heading
-                    title={`Ubah draft BAP #${bap.id}`}
+                    title={`Ubah draft ${bap.document_number}`}
                     description="Periksa kembali range, total otomatis, dan pemakaian online sebelum BAP diajukan."
                 />
 

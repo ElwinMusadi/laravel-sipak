@@ -314,6 +314,7 @@ class SkpdBapController extends Controller
     {
         return [
             'id' => $bap->id,
+            'document_number' => $bap->document_number,
             'service_date' => $bap->service_date->toDateString(),
             'loket' => ['id' => $bap->loket->id, 'name' => $bap->loket->name],
             'numerator_start' => $bap->numerator_start,
@@ -349,6 +350,7 @@ class SkpdBapController extends Controller
     {
         return [
             'id' => $bap->id,
+            'document_number' => $bap->document_number,
             'service_date' => $bap->service_date->toDateString(),
             'numerator_start' => $bap->numerator_start,
             'numerator_end' => $bap->numerator_end,

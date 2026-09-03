@@ -40,6 +40,7 @@ type CancellationReason = 'cancelled' | 'damaged';
 type Cancellation = {
     id: number;
     bap_id: number;
+    bap_document_number: string;
     service_date: string;
     loket: string;
     numerator: number;
@@ -209,8 +210,8 @@ export default function BapCancellationIndex({
                                         {cancellations.data.map(
                                             (cancellation) => (
                                                 <TableRow key={cancellation.id}>
-                                                    <TableCell className="font-medium tabular-nums">
-                                                        #{cancellation.bap_id}
+                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                        {cancellation.bap_document_number}
                                                     </TableCell>
                                                     <TableCell className="whitespace-nowrap">
                                                         {formatDate(

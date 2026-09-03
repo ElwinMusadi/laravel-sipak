@@ -28,6 +28,7 @@ type Props = {
     created_at: string;
     bap: {
       id: number;
+      document_number: string;
       service_date: string;
       loket: { id: number; name: string };
       numerator_start: number;
@@ -69,7 +70,7 @@ export default function ShowBapCancellation({ cancellation }: Props) {
               <Badge variant="outline">{cancellation.reason_label}</Badge>
             </div>
             <p className="text-muted-foreground text-sm">
-              Tercatat pada BAP SKPD #{cancellation.bap.id}.
+              Tercatat pada {cancellation.bap.document_number}.
             </p>
           </div>
           <Button variant="outline" asChild>
