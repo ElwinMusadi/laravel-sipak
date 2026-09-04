@@ -318,7 +318,7 @@ class SkpdBapController extends Controller
     }
 
     /**
-     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, non_online_usage_count: int, status: string, created_by: string, creator_role: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool}}
+     * @return array{id: int, service_date: string, loket: array{id: int, name: string}, numerator_start: int, numerator_end: int, total_usage: int, online_usage_count: int, cancellation_count: int, non_online_usage_count: int, status: string, created_by: string, creator_role: string, created_at: string, submitted_at: string|null, can: array{edit: bool, submit: bool, delete: bool}}
      */
     private function bapData(User $actor, Bap $bap): array
     {
@@ -331,6 +331,7 @@ class SkpdBapController extends Controller
             'numerator_end' => $bap->numerator_end,
             'total_usage' => $bap->total_usage,
             'online_usage_count' => $bap->online_usage_count,
+            'cancellation_count' => (int) $bap->cancellations_count,
             'non_online_usage_count' => $bap->total_usage - $bap->online_usage_count,
             'status' => $bap->status->value,
             'created_by' => $bap->creator->name,

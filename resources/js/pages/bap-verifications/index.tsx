@@ -120,7 +120,6 @@ export default function BapVerificationIndex({
                 >
                   <TableHeader>
                     <TableRow>
-                      <TableHead>BAP</TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Loket</TableHead>
                       <TableHead>Nomeratur</TableHead>
@@ -142,9 +141,6 @@ export default function BapVerificationIndex({
                   <TableBody>
                     {baps.data.map((bap) => (
                       <TableRow key={bap.id}>
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {bap.document_number}
-                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(bap.service_date)}
                         </TableCell>

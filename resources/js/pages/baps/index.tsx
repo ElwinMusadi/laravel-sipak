@@ -43,6 +43,7 @@ type Bap = {
   numerator_end: number;
   total_usage: number;
   online_usage_count: number;
+  cancellation_count: number;
   status: BapStatus;
   created_by: string;
   submitted_at: string | null;
@@ -195,7 +196,10 @@ export default function BapIndex({ baps, filters, can }: Props) {
                       <TableHead>Nomeratur</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead>Online</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Batal</TableHead>
+                      <TableHead className="text-center w-42 min-w-42">
+                        Status
+                      </TableHead>
                       <TableHead>Dibuat oleh</TableHead>
                       <TableHead>Waktu submit</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
@@ -218,7 +222,13 @@ export default function BapIndex({ baps, filters, can }: Props) {
                           {formatQuantity(bap.online_usage_count)} set
                         </TableCell>
                         <TableCell>
-                          <BapStatusBadge status={bap.status} />
+                          {formatQuantity(bap.cancellation_count)} set
+                        </TableCell>
+                        <TableCell className="w-42 min-w-42 align-center">
+                          <BapStatusBadge
+                            status={bap.status}
+                            className="h-auto w-full whitespace-normal wrap-break-words py-1 leading-tight text-[11px] text-center "
+                          />
                         </TableCell>
                         <TableCell>{bap.created_by}</TableCell>
                         <TableCell className="text-muted-foreground whitespace-nowrap">

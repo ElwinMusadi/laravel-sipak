@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { store } from "@/routes/login";
-import skpdLq310Image from "../../../../blueprint/SKPD-LQ310.jpeg";
+import skpdLq310Image from "../../../../blueprint/SKPD-LQ310.jpg";
 
 type Props = {
   status?: string;
@@ -74,11 +74,7 @@ export default function Login({ status }: Props) {
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        <Checkbox
-                          id="remember"
-                          name="remember"
-                          tabIndex={3}
-                        />
+                        <Checkbox id="remember" name="remember" tabIndex={3} />
                         <Label htmlFor="remember">Ingat saya</Label>
                       </div>
 
@@ -101,7 +97,7 @@ export default function Login({ status }: Props) {
                 <img
                   src={skpdLq310Image}
                   alt="Dokumen Surat Ketetapan Pajak Daerah"
-                  className="size-full object-cover"
+                  className="h-full object-cover scale-115 ml-5"
                 />
               </div>
             </CardContent>

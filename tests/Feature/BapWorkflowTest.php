@@ -3,6 +3,7 @@
 use App\Actions\SkpdInventory\GenerateBapDocumentNumber;
 use App\BapStatus;
 use App\Models\Bap;
+use App\Models\BapCancellation;
 use App\Models\Loket;
 use App\Models\SkpdAllocation;
 use App\Models\SkpdBox;
@@ -112,6 +113,34 @@ test('petugas loket can create a BAP draft from their assigned Loket with derive
         'auditable_id' => $bap->id,
         'event' => 'bap_usage_segments.created',
     ]);
+});
+
+test('BAP index provides the cancellation count for its Batal/Rusak column', function () {
+    $loket = Loket::factory()->create();
+    $petugas = bapPetugas($loket);
+    bapAllocation($petugas, $loket);
+
+    $this->actingAs($petugas)
+        ->post(route('baps.store'), bapPayload())
+        ->assertRedirect();
+
+    $bap = Bap::query()->sole();
+    BapCancellation::create([
+        'bap_id' => $bap->id,
+        'numerator' => 582_610,
+        'reason' => 'printer_error',
+        'created_by' => $petugas->id,
+    ]);
+
+    $this->actingAs($petugas)
+        ->get(route('baps.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('baps/index')
+            ->where('baps.data.0.id', $bap->id)
+            ->where('baps.data.0.cancellation_count', 1)
+            ->etc(),
+        );
 });
 
 test('created BAP persists a document number from its Loket and creation date', function () {

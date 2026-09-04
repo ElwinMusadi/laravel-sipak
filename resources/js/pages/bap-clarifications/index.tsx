@@ -86,7 +86,7 @@ export default function BapClarificationIndex({
                 <Table className="min-w-300">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>BAP</TableHead>
+                      {/* <TableHead>BAP</TableHead> */}
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Loket</TableHead>
                       <TableHead>Tahap</TableHead>
@@ -100,9 +100,9 @@ export default function BapClarificationIndex({
                   <TableBody>
                     {clarifications.data.map((clarification) => (
                       <TableRow key={clarification.id}>
-                        <TableCell className="font-medium whitespace-nowrap">
+                        {/* <TableCell className="font-medium whitespace-nowrap">
                           {clarification.bap_document_number}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="whitespace-nowrap">
                           {formatDate(clarification.service_date)}
                         </TableCell>

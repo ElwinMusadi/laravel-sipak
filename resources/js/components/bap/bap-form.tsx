@@ -446,6 +446,15 @@ export function BapForm({
                                         />
                                     </div>
 
+                                    {parsedCount >= 1 && (
+                                        <CancellationDetails
+                                            items={cancellationItems}
+                                            reasons={cancellationReasons}
+                                            formId={formId}
+                                            onChange={updateItem}
+                                        />
+                                    )}
+
                                     <div className="flex flex-wrap justify-end gap-3 pt-2 sm:col-span-2">
                                         <Button variant="outline" asChild>
                                             <Link href={index()}>Batal</Link>
@@ -467,154 +476,6 @@ export function BapForm({
                         </Form>
                     </CardContent>
                 </Card>
-
-                {/* Dynamic cancellation section — rendered only when count >= 1 */}
-                {parsedCount >= 1 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Detail SKPD Batal/Rusak</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid gap-4">
-                            {cancellationItems.map((item, idx) => {
-                                const isCustom = item.reason === 'custom';
-                                return (
-                                    <div key={idx} className="grid gap-3">
-                                        {idx > 0 && <Separator />}
-                                        <p className="text-muted-foreground text-xs font-medium">
-                                            Batal/Rusak #{idx + 1}
-                                        </p>
-                                        {/* Hidden inputs for form submission */}
-                                        <input
-                                            type="hidden"
-                                            name={`cancellations[${idx}][numerator]`}
-                                            form={formId}
-                                            value={item.numerator}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`cancellations[${idx}][reason]`}
-                                            form={formId}
-                                            value={item.reason}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`cancellations[${idx}][description]`}
-                                            form={formId}
-                                            value={item.description}
-                                        />
-
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            <div className="grid gap-2">
-                                                <Label
-                                                    htmlFor={`cancellations-${idx}-numerator`}
-                                                >
-                                                    Nomeratur
-                                                </Label>
-                                                <Input
-                                                    id={`cancellations-${idx}-numerator`}
-                                                    value={item.numerator}
-                                                    onChange={(e) =>
-                                                        updateItem(
-                                                            idx,
-                                                            'numerator',
-                                                            numeratorDigits(
-                                                                e.target.value,
-                                                            ),
-                                                        )
-                                                    }
-                                                    onBlur={() =>
-                                                        updateItem(
-                                                            idx,
-                                                            'numerator',
-                                                            item.numerator ===
-                                                                ''
-                                                                ? ''
-                                                                : item.numerator.padStart(
-                                                                      7,
-                                                                      '0',
-                                                                  ),
-                                                        )
-                                                    }
-                                                    className="font-mono tabular-nums"
-                                                    inputMode="numeric"
-                                                    maxLength={7}
-                                                    placeholder="0582612"
-                                                />
-                                            </div>
-
-                                            <div className="grid gap-2">
-                                                <Label
-                                                    htmlFor={`cancellations-${idx}-reason`}
-                                                >
-                                                    Alasan Batal/Rusak
-                                                </Label>
-                                                <Select
-                                                    value={item.reason}
-                                                    onValueChange={(value) =>
-                                                        updateItem(
-                                                            idx,
-                                                            'reason',
-                                                            value,
-                                                        )
-                                                    }
-                                                >
-                                                    <SelectTrigger
-                                                        id={`cancellations-${idx}-reason`}
-                                                    >
-                                                        <SelectValue placeholder="Pilih alasan" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectGroup>
-                                                            {cancellationReasons.map(
-                                                                (r) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            r.value
-                                                                        }
-                                                                        value={
-                                                                            r.value
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            r.label
-                                                                        }
-                                                                    </SelectItem>
-                                                                ),
-                                                            )}
-                                                        </SelectGroup>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        {isCustom && (
-                                            <div className="grid gap-2">
-                                                <Label
-                                                    htmlFor={`cancellations-${idx}-description`}
-                                                >
-                                                    Keterangan
-                                                </Label>
-                                                <Textarea
-                                                    id={`cancellations-${idx}-description`}
-                                                    value={item.description}
-                                                    onChange={(e) =>
-                                                        updateItem(
-                                                            idx,
-                                                            'description',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    maxLength={1000}
-                                                    placeholder="Jelaskan kondisi batal atau rusak secara singkat."
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </CardContent>
-                    </Card>
-                )}
             </div>
 
             <div className="grid content-start gap-4">
@@ -720,6 +581,154 @@ export function BapForm({
                 ) : null}
             </div>
         </div>
+    );
+}
+
+function CancellationDetails({
+    items,
+    reasons,
+    formId,
+    onChange,
+}: {
+    items: CancellationItem[];
+    reasons: CancellationReason[];
+    formId: string;
+    onChange: (
+        index: number,
+        field: keyof CancellationItem,
+        value: string,
+    ) => void;
+}) {
+    return (
+        <section className="grid gap-4 border-t pt-2 sm:col-span-2">
+            <div className="grid gap-1">
+                <h2 className="font-medium">Detail SKPD Batal/Rusak</h2>
+                <p className="text-muted-foreground text-sm">
+                    Lengkapi nomeratur dan alasan untuk setiap SKPD Batal/Rusak.
+                </p>
+            </div>
+
+            {items.map((item, idx) => {
+                const isCustom = item.reason === 'custom';
+
+                return (
+                    <div key={idx} className="grid gap-3">
+                        {idx > 0 && <Separator />}
+                        <p className="text-muted-foreground text-xs font-medium">
+                            Batal/Rusak #{idx + 1}
+                        </p>
+                        <input
+                            type="hidden"
+                            name={`cancellations[${idx}][numerator]`}
+                            form={formId}
+                            value={item.numerator}
+                        />
+                        <input
+                            type="hidden"
+                            name={`cancellations[${idx}][reason]`}
+                            form={formId}
+                            value={item.reason}
+                        />
+                        <input
+                            type="hidden"
+                            name={`cancellations[${idx}][description]`}
+                            form={formId}
+                            value={item.description}
+                        />
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label
+                                    htmlFor={`cancellations-${idx}-numerator`}
+                                >
+                                    Nomeratur
+                                </Label>
+                                <Input
+                                    id={`cancellations-${idx}-numerator`}
+                                    value={item.numerator}
+                                    onChange={(event) =>
+                                        onChange(
+                                            idx,
+                                            'numerator',
+                                            numeratorDigits(event.target.value),
+                                        )
+                                    }
+                                    onBlur={() =>
+                                        onChange(
+                                            idx,
+                                            'numerator',
+                                            item.numerator === ''
+                                                ? ''
+                                                : item.numerator.padStart(
+                                                      7,
+                                                      '0',
+                                                  ),
+                                        )
+                                    }
+                                    className="font-mono tabular-nums"
+                                    inputMode="numeric"
+                                    maxLength={7}
+                                    placeholder="0582612"
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor={`cancellations-${idx}-reason`}>
+                                    Alasan Batal/Rusak
+                                </Label>
+                                <Select
+                                    value={item.reason}
+                                    onValueChange={(value) =>
+                                        onChange(idx, 'reason', value)
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id={`cancellations-${idx}-reason`}
+                                    >
+                                        <SelectValue placeholder="Pilih alasan" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {reasons.map((reason) => (
+                                                <SelectItem
+                                                    key={reason.value}
+                                                    value={reason.value}
+                                                >
+                                                    {reason.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {isCustom && (
+                            <div className="grid gap-2">
+                                <Label
+                                    htmlFor={`cancellations-${idx}-description`}
+                                >
+                                    Keterangan
+                                </Label>
+                                <Textarea
+                                    id={`cancellations-${idx}-description`}
+                                    value={item.description}
+                                    onChange={(event) =>
+                                        onChange(
+                                            idx,
+                                            'description',
+                                            event.target.value,
+                                        )
+                                    }
+                                    maxLength={1000}
+                                    placeholder="Jelaskan kondisi batal atau rusak secara singkat."
+                                />
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </section>
     );
 }
 
